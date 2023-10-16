@@ -2,8 +2,8 @@
 
 use gstd::{prelude::*, ActorId};
 
-mod service;
 mod io;
+mod service;
 
 #[cfg(test)]
 mod tests;
@@ -19,6 +19,7 @@ async fn init() {
 
     unsafe {
         OWNER = Some(init.owner);
+
         SERVICE = Some(service::Service::new(init.service_address));
     }
 }
@@ -26,10 +27,17 @@ async fn init() {
 #[gstd::async_main]
 async fn main() {
     let service = unsafe { SERVICE.as_ref().expect("Service not created somehow!") };
-    let handler = io::Handler::new(service, unsafe { OWNER.as_ref().expect("Owner not initialized somehow").clone() });
+    let mut handler = io::Handler::new(service, unsafe {
+        OWNER
+            .as_ref()
+            .expect("Owner not initialized somehow")
+            .clone()
+    });
     let request: io::Control = gstd::msg::load().expect("Unable to parse control message");
 
     let reply = handler.dispatch(request);
 
-    gcore::msg::reply(&reply.payload[..], 0);
+    if let Some(payload) = reply.payload {
+        gcore::msg::reply(&payload[..], 0);
+    }
 }

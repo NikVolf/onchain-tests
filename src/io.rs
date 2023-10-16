@@ -6,11 +6,20 @@ use gstd::{prelude::*, ActorId};
 #[derive(Debug, Decode, Encode)]
 pub enum Control {
     GetOwner,
-    ReplaceOwner { new_owner: ActorId },
+    ReplaceOwner {
+        new_owner: ActorId,
+    },
     GetFixtures,
-    RemoveFixture { index: u32 },
-    UpdateFixture { index: u32, fixture: service::Fixture },
-    AddFixture { fixture: service::Fixture },
+    RemoveFixture {
+        index: u32,
+    },
+    UpdateFixture {
+        index: u32,
+        fixture: service::Fixture,
+    },
+    AddFixture {
+        fixture: service::Fixture,
+    },
     ClearFixtures,
     RunFixtures,
 }
@@ -23,14 +32,20 @@ pub struct Init {
 
 #[derive(Debug)]
 pub struct Reply {
-    pub payload: Vec<u8>,
+    pub payload: Option<Vec<u8>>,
 }
 
 impl<T: Encode> From<T> for Reply {
     fn from(t: T) -> Self {
-        Self {
-            payload: t.encode(),
+        Reply {
+            payload: Some(t.encode()),
         }
+    }
+}
+
+impl Reply {
+    pub fn none() -> Self {
+        Reply { payload: None }
     }
 }
 
@@ -44,14 +59,24 @@ impl<'a> Handler<'a> {
         Self { service, owner }
     }
 
-    pub fn dispatch(&self, control: Control) -> Reply {
+    pub fn dispatch(&mut self, control: Control) -> Reply {
+        use Control::*;
         match control {
-            Control::GetOwner => self.get_owner().into(),
+            GetOwner => self.get_owner().into(),
+            ReplaceOwner { new_owner } => {
+                self.owner = new_owner;
+                Reply::none()
+            }
+            GetFixtures => self.get_fixtures().into(),
             _ => unimplemented!(),
         }
     }
 
     fn get_owner(&self) -> ActorId {
         self.owner.clone()
+    }
+
+    fn get_fixtures(&self) -> Vec<service::Fixture> {
+        vec![]
     }
 }
