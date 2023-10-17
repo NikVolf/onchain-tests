@@ -25,6 +25,12 @@ pub enum Control {
 }
 
 #[derive(Debug, Decode, Encode)]
+pub enum Error {
+    NotFound,
+    NotEnoughGas,
+}
+
+#[derive(Debug, Decode, Encode)]
 pub struct Init {
     pub owner: ActorId,
     pub service_address: ActorId,
@@ -50,12 +56,17 @@ impl Reply {
 }
 
 pub struct Handler<'a> {
-    service: &'a service::Service,
+    service: &'a mut service::Service,
     owner: ActorId,
 }
 
+#[derive(Debug, Decode, Encode)]
+pub struct FailedFixtures {
+    pub indices: Vec<(u32, service::StringIndex)>,
+}
+
 impl<'a> Handler<'a> {
-    pub fn new(service: &'a service::Service, owner: ActorId) -> Self {
+    pub fn new(service: &'a mut service::Service, owner: ActorId) -> Self {
         Self { service, owner }
     }
 
@@ -68,7 +79,17 @@ impl<'a> Handler<'a> {
                 Reply::none()
             }
             GetFixtures => self.get_fixtures().into(),
-            _ => unimplemented!(),
+            RemoveFixture { index } => self.remove_fixture(index).into(),
+            UpdateFixture { index, fixture } => self.update_fixture(index, fixture).into(),
+            AddFixture { fixture } => {
+                self.add_fixture(fixture);
+                Reply::none()
+            }
+            ClearFixtures => {
+                self.clear_fixtures();
+                Reply::none()
+            }
+            RunFixtures => self.run_fixtures().into(),
         }
     }
 
@@ -77,6 +98,37 @@ impl<'a> Handler<'a> {
     }
 
     fn get_fixtures(&self) -> Vec<service::Fixture> {
-        vec![]
+        self.service.fixtures().to_vec()
+    }
+
+    fn remove_fixture(&mut self, index: u32) -> Result<(), Error> {
+        if (index as usize) < self.service.fixtures().len() {
+            self.service.drop_fixture(index as usize);
+            Ok(())
+        } else {
+            Err(Error::NotFound)
+        }
+    }
+
+    fn update_fixture(&mut self, index: u32, fixture: service::Fixture) -> Result<(), Error> {
+        if (index as usize) < self.service.fixtures().len() {
+            self.service.fixtures_mut()[index as usize] = fixture;
+
+            Ok(())
+        } else {
+            Err(Error::NotFound)
+        }
+    }
+
+    fn add_fixture(&mut self, fixture: service::Fixture) {
+        self.service.add_fixture(fixture);
+    }
+
+    fn clear_fixtures(&mut self) {
+        self.service.clear_fixtures();
+    }
+
+    fn run_fixtures(&self) -> Result<FailedFixtures, Error> {
+        unimplemented!()
     }
 }

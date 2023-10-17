@@ -5,11 +5,11 @@ use gstd::{prelude::*, ActorId};
 use codec::{Decode, Encode};
 
 // TODO: use metadata-stored static strings once ready
-#[derive(Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct StringIndex;
 
 /// Message to be sent or to be expected.
-#[derive(Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct Message {
     pub gas: u64,
     pub value: u128,
@@ -17,7 +17,7 @@ pub struct Message {
 }
 
 /// Simple expectation of a particular request.
-#[derive(Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct Expectation {
     pub request: Message,
     pub response: Message,
@@ -27,7 +27,7 @@ pub struct Expectation {
 /// Single set of tests with common setup procedure.
 ///
 /// Setup and run bunch of request with expected responses.
-#[derive(Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct Fixture {
     pub description: StringIndex,
     pub preparation: Vec<Message>,
@@ -63,5 +63,9 @@ impl Service {
 
     pub fn fixtures_mut(&mut self) -> &mut [Fixture] {
         &mut self.fixtures
+    }
+
+    pub fn clear_fixtures(&mut self) {
+        self.fixtures.clear();
     }
 }

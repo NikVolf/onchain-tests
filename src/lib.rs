@@ -26,7 +26,7 @@ async fn init() {
 
 #[gstd::async_main]
 async fn main() {
-    let service = unsafe { SERVICE.as_ref().expect("Service not created somehow!") };
+    let service = unsafe { SERVICE.as_mut().expect("Service not created somehow!") };
     let mut handler = io::Handler::new(service, unsafe {
         OWNER
             .as_ref()
@@ -38,6 +38,6 @@ async fn main() {
     let reply = handler.dispatch(request);
 
     if let Some(payload) = reply.payload {
-        gcore::msg::reply(&payload[..], 0);
+        gcore::msg::reply(&payload[..], 0).expect("Failed to reply");
     }
 }

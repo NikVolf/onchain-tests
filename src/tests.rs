@@ -2,7 +2,7 @@ extern crate gtest;
 extern crate std;
 
 use self::gtest::{Log, Program, System};
-use gstd::{prelude::*, ActorId};
+use gstd::prelude::*;
 
 use crate::io;
 
