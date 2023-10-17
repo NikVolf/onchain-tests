@@ -3,6 +3,7 @@ extern crate std;
 
 use self::gtest::{Log, Program, System};
 use gstd::prelude::*;
+use crate::service::{Fixture, StringIndex, Expectation, Message, ExpectedMessage};
 
 use crate::io;
 
@@ -32,6 +33,71 @@ fn create() {
         .source(program.id())
         .dest(SENDER)
         .payload_bytes(&OWNER_1[..]);
+
+    assert!(res.contains(&log));
+}
+
+#[test]
+fn service_rest() {
+    let system = System::new();
+    system.init_logger();
+
+    let program = Program::current(&system);
+    let _res = program.send(
+        OWNER_1,
+        io::Init {
+            owner: OWNER_1.into(),
+            service_address: [0u8; 32].into(),
+        },
+    );
+
+    let fixture = Fixture {
+        description: StringIndex,
+        preparation: vec![],
+        expectations: vec![
+            Expectation {
+                request: Message {
+                    gas: 1000000000,
+                    value: 0,
+                    payload: b"ping".to_vec(),
+                },
+                response: ExpectedMessage {
+                    gas: None,
+                    value: Some(0),
+                    payload: Some(b"pong".to_vec()),
+                },
+                fail_hint: StringIndex,
+            }
+        ]
+    };
+    let _res = program.send(SENDER, io::Control::AddFixture { fixture: fixture.clone() });
+
+    let res = program.send(
+        SENDER,
+        io::Control::GetFixtures,
+    );
+
+    let log = Log::builder()
+        .source(program.id())
+        .dest(SENDER)
+        .payload_bytes(vec![fixture].encode());
+
+    assert!(res.contains(&log));
+
+    let _res = program.send(
+        SENDER,
+        io::Control::RemoveFixture { index: 0 },
+    );
+
+    let res = program.send(
+        SENDER,
+        io::Control::GetFixtures,
+    );
+
+    let log = Log::builder()
+        .source(program.id())
+        .dest(SENDER)
+        .payload_bytes(Vec::<Fixture>::new().encode());
 
     assert!(res.contains(&log));
 }

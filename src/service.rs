@@ -16,11 +16,19 @@ pub struct Message {
     pub payload: Vec<u8>,
 }
 
+/// Message to be expected.
+#[derive(Clone, Debug, Encode, Decode)]
+pub struct ExpectedMessage {
+    pub gas: Option<u64>,
+    pub value: Option<u128>,
+    pub payload: Option<Vec<u8>>,
+}
+
 /// Simple expectation of a particular request.
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct Expectation {
     pub request: Message,
-    pub response: Message,
+    pub response: ExpectedMessage,
     pub fail_hint: StringIndex,
 }
 
