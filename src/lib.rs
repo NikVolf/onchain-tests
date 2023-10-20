@@ -1,6 +1,6 @@
 #![no_std]
 
-use gstd::{prelude::*, ActorId};
+use gstd::{prelude::*, ActorId, sync::RwLock};
 
 mod io;
 mod service;
@@ -8,7 +8,7 @@ mod service;
 #[cfg(test)]
 mod tests;
 
-static mut SERVICE: Option<service::Service> = None;
+static SERVICE: RwLock<service::Service> = RwLock::new(service::Service::empty());
 static mut OWNER: Option<ActorId> = None;
 
 #[gstd::async_init]
@@ -20,14 +20,13 @@ async fn init() {
     unsafe {
         OWNER = Some(init.owner);
 
-        SERVICE = Some(service::Service::new(init.service_address));
+        *SERVICE.write().await = service::Service::new(init.service_address);
     }
 }
 
 #[gstd::async_main]
 async fn main() {
-    let service = unsafe { SERVICE.as_mut().expect("Service not created somehow!") };
-    let mut handler = io::Handler::new(service, unsafe {
+    let mut handler = io::Handler::new(&SERVICE, unsafe {
         OWNER
             .as_ref()
             .expect("Owner not initialized somehow")
@@ -35,7 +34,7 @@ async fn main() {
     });
     let request: io::Control = gstd::msg::load().expect("Unable to parse control message");
 
-    let reply = handler.dispatch(request);
+    let reply = handler.dispatch(request).await;
 
     if let Some(payload) = reply.payload {
         gcore::msg::reply(&payload[..], 0).expect("Failed to reply");

@@ -1,7 +1,7 @@
 use crate::service;
 
 use codec::{Decode, Encode};
-use gstd::{prelude::*, ActorId};
+use gstd::{prelude::*, ActorId, sync::RwLock};
 
 #[derive(Debug, Decode, Encode)]
 pub enum Control {
@@ -56,7 +56,7 @@ impl Reply {
 }
 
 pub struct Handler<'a> {
-    service: &'a mut service::Service,
+    service: &'a RwLock<service::Service>,
     owner: ActorId,
 }
 
@@ -66,11 +66,11 @@ pub struct FailedFixtures {
 }
 
 impl<'a> Handler<'a> {
-    pub fn new(service: &'a mut service::Service, owner: ActorId) -> Self {
+    pub fn new(service: &'a RwLock<service::Service>, owner: ActorId) -> Self {
         Self { service, owner }
     }
 
-    pub fn dispatch(&mut self, control: Control) -> Reply {
+    pub async fn dispatch(&mut self, control: Control) -> Reply {
         use Control::*;
         match control {
             GetOwner => self.get_owner().into(),
@@ -78,18 +78,18 @@ impl<'a> Handler<'a> {
                 self.owner = new_owner;
                 Reply::none()
             }
-            GetFixtures => self.get_fixtures().into(),
-            RemoveFixture { index } => self.remove_fixture(index).into(),
-            UpdateFixture { index, fixture } => self.update_fixture(index, fixture).into(),
+            GetFixtures => self.get_fixtures().await.into(),
+            RemoveFixture { index } => self.remove_fixture(index).await.into(),
+            UpdateFixture { index, fixture } => self.update_fixture(index, fixture).await.into(),
             AddFixture { fixture } => {
-                self.add_fixture(fixture);
+                self.add_fixture(fixture).await;
                 Reply::none()
             }
             ClearFixtures => {
-                self.clear_fixtures();
+                self.clear_fixtures().await;
                 Reply::none()
             }
-            RunFixtures => self.run_fixtures().into(),
+            RunFixtures => self.run_fixtures().await.into(),
         }
     }
 
@@ -97,22 +97,25 @@ impl<'a> Handler<'a> {
         self.owner.clone()
     }
 
-    fn get_fixtures(&self) -> Vec<service::Fixture> {
-        self.service.fixtures().to_vec()
+    async fn get_fixtures(&self) -> Vec<service::Fixture> {
+        self.service.read().await.fixtures().to_vec()
     }
 
-    fn remove_fixture(&mut self, index: u32) -> Result<(), Error> {
-        if (index as usize) < self.service.fixtures().len() {
-            self.service.drop_fixture(index as usize);
+    async fn remove_fixture(&mut self, index: u32) -> Result<(), Error> {
+        let mut service = self.service.write().await;
+        if (index as usize) < service.fixtures().len() {
+            service.drop_fixture(index as usize);
             Ok(())
         } else {
             Err(Error::NotFound)
         }
     }
 
-    fn update_fixture(&mut self, index: u32, fixture: service::Fixture) -> Result<(), Error> {
-        if (index as usize) < self.service.fixtures().len() {
-            self.service.fixtures_mut()[index as usize] = fixture;
+    async fn update_fixture(&mut self, index: u32, fixture: service::Fixture) -> Result<(), Error> {
+        let mut service = self.service.write().await;
+
+        if (index as usize) < service.fixtures().len() {
+            service.fixtures_mut()[index as usize] = fixture;
 
             Ok(())
         } else {
@@ -120,15 +123,15 @@ impl<'a> Handler<'a> {
         }
     }
 
-    fn add_fixture(&mut self, fixture: service::Fixture) {
-        self.service.add_fixture(fixture);
+    async fn add_fixture(&mut self, fixture: service::Fixture) {
+        self.service.write().await.add_fixture(fixture);
     }
 
-    fn clear_fixtures(&mut self) {
-        self.service.clear_fixtures();
+    async fn clear_fixtures(&mut self) {
+        self.service.write().await.clear_fixtures();
     }
 
-    fn run_fixtures(&self) -> Result<FailedFixtures, Error> {
+    async fn run_fixtures(&self) -> Result<FailedFixtures, Error> {
         unimplemented!()
     }
 }

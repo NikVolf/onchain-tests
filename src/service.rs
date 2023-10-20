@@ -50,6 +50,14 @@ pub struct Service {
 }
 
 impl Service {
+
+    pub const fn empty() -> Self {
+        Self {
+            address: ActorId::new([0u8; 32]),
+            fixtures: vec![],
+        }
+    }
+
     pub fn new(address: ActorId) -> Self {
         Service {
             address,
