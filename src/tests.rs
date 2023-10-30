@@ -2,8 +2,8 @@ extern crate gtest;
 extern crate std;
 
 use self::gtest::{Log, Program, System};
+use crate::service::{Expectation, ExpectedMessage, Fixture, Message, StringIndex};
 use gstd::prelude::*;
-use crate::service::{Fixture, StringIndex, Expectation, Message, ExpectedMessage};
 
 use crate::io;
 
@@ -54,28 +54,28 @@ fn service_rest() {
     let fixture = Fixture {
         description: StringIndex,
         preparation: vec![],
-        expectations: vec![
-            Expectation {
-                request: Message {
-                    gas: 1000000000,
-                    value: 0,
-                    payload: b"ping".to_vec(),
-                },
-                response: ExpectedMessage {
-                    gas: None,
-                    value: Some(0),
-                    payload: Some(b"pong".to_vec()),
-                },
-                fail_hint: StringIndex,
-            }
-        ]
+        expectations: vec![Expectation {
+            request: Message {
+                gas: 1000000000,
+                value: 0,
+                payload: b"ping".to_vec(),
+            },
+            response: ExpectedMessage {
+                at_least_gas: None,
+                value: Some(0),
+                payload: Some(b"pong".to_vec()),
+            },
+            fail_hint: StringIndex,
+        }],
     };
-    let _res = program.send(SENDER, io::Control::AddFixture { fixture: fixture.clone() });
-
-    let res = program.send(
+    let _res = program.send(
         SENDER,
-        io::Control::GetFixtures,
+        io::Control::AddFixture {
+            fixture: fixture.clone(),
+        },
     );
+
+    let res = program.send(SENDER, io::Control::GetFixtures);
 
     let log = Log::builder()
         .source(program.id())
@@ -84,15 +84,9 @@ fn service_rest() {
 
     assert!(res.contains(&log));
 
-    let _res = program.send(
-        SENDER,
-        io::Control::RemoveFixture { index: 0 },
-    );
+    let _res = program.send(SENDER, io::Control::RemoveFixture { index: 0 });
 
-    let res = program.send(
-        SENDER,
-        io::Control::GetFixtures,
-    );
+    let res = program.send(SENDER, io::Control::GetFixtures);
 
     let log = Log::builder()
         .source(program.id())

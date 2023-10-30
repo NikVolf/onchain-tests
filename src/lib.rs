@@ -1,6 +1,6 @@
 #![no_std]
 
-use gstd::{prelude::*, ActorId, sync::RwLock};
+use gstd::{prelude::*, sync::RwLock, ActorId};
 
 mod io;
 mod service;

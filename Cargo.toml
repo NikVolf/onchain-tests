@@ -9,7 +9,7 @@ gstd = { git = "https://github.com/gear-tech/gear.git" }
 gcore = { git = "https://github.com/gear-tech/gear.git" }
 codec = { package = "parity-scale-codec", version = "3.4.0", default-features = false, features = ["derive"] }
 scale-info = { version = "2.5.0", default-features = false, features = ["derive"] }
-futures = { version = "0.3", default-features = false, features = ["alloc"] }
+futures = { version = "0.3", default-features = false, features = ["alloc", "async-await"] }
 hashbrown = "0.13"
 async-trait = "*"
 

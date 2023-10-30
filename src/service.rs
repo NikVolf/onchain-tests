@@ -19,7 +19,7 @@ pub struct Message {
 /// Message to be expected.
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct ExpectedMessage {
-    pub gas: Option<u64>,
+    pub at_least_gas: Option<u64>,
     pub value: Option<u128>,
     pub payload: Option<Vec<u8>>,
 }
@@ -42,6 +42,13 @@ pub struct Fixture {
     pub expectations: Vec<Expectation>,
 }
 
+impl Fixture {
+    pub fn gas_required(&self) -> u64 {
+        self.preparation.iter().map(|p| p.gas).sum::<u64>()
+            + self.expectations.iter().map(|e| e.request.gas).sum::<u64>()
+    }
+}
+
 /// Service with assigned fixture.
 #[derive(Debug, Encode, Decode)]
 pub struct Service {
@@ -50,7 +57,6 @@ pub struct Service {
 }
 
 impl Service {
-
     pub const fn empty() -> Self {
         Self {
             address: ActorId::new([0u8; 32]),
@@ -83,5 +89,13 @@ impl Service {
 
     pub fn clear_fixtures(&mut self) {
         self.fixtures.clear();
+    }
+
+    pub fn gas_required(&self) -> u64 {
+        self.fixtures().iter().map(|f| f.gas_required()).sum()
+    }
+
+    pub fn address(&self) -> ActorId {
+        self.address
     }
 }
