@@ -5,7 +5,7 @@ use gstd::{prelude::*, ActorId};
 use codec::{Decode, Encode};
 
 // TODO: use metadata-stored static strings once ready
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Copy, Debug, Encode, Decode)]
 pub struct StringIndex;
 
 /// Message to be sent or to be expected.

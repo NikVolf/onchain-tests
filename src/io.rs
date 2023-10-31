@@ -1,10 +1,7 @@
 use crate::service;
 
 use codec::{Decode, Encode};
-use futures::{
-    join, select_biased,
-    stream::{FuturesUnordered, StreamExt},
-};
+use futures::stream::{FuturesUnordered, StreamExt};
 use gstd::{msg, prelude::*, sync::RwLock, ActorId};
 
 #[derive(Debug, Decode, Encode)]
@@ -41,13 +38,21 @@ pub struct Init {
 }
 
 #[derive(Debug, Decode, Encode)]
+pub enum FailType {
+    Execution,
+    PayloadMismatch,
+    Preparation,
+}
+
+#[derive(Debug, Decode, Encode)]
 pub enum Event {
     FixtureSuccess {
         index: u32,
     },
     FixtureFail {
         index: u32,
-        fail_hint: service::StringIndex,
+        fail_type: FailType,
+        fail_hint: Option<service::StringIndex>,
     },
     PreparationFail {
         index: u32,
@@ -78,9 +83,22 @@ pub struct Handler<'a> {
     owner: ActorId,
 }
 
+#[derive(Debug, Decode, Encode)]
+pub struct FailedFixture {
+    pub index: u32,
+    pub fail_type: FailType,
+    pub fail_hint: Option<service::StringIndex>,
+}
+
 #[derive(Default, Debug, Decode, Encode)]
 pub struct FailedFixtures {
-    pub indices: Vec<(u32, service::StringIndex)>,
+    pub indices: Vec<FailedFixture>,
+}
+
+impl From<Vec<FailedFixture>> for FailedFixtures {
+    fn from(indices: Vec<FailedFixture>) -> Self {
+        Self { indices }
+    }
 }
 
 impl<'a> Handler<'a> {
@@ -154,10 +172,10 @@ impl<'a> Handler<'a> {
             PreparationSendFail(u32),
             ExpectationSendFail(u32),
             ExpectationExecutionFail(u32, gstd::errors::Error),
-            PayloadMismatch(u32, Vec<u8>),
+            PayloadMismatch(u32, Vec<u8>, service::StringIndex),
         }
 
-        let sender = msg::source();
+        let source = msg::source();
         let service = self.service.read().await;
 
         let gas_required = service.gas_required();
@@ -169,9 +187,9 @@ impl<'a> Handler<'a> {
             });
         }
 
-        let fails_list: Vec<(u32, service::StringIndex)> = vec![];
+        let mut fails_list: Vec<FailedFixture> = vec![];
 
-        let fixtures_stream = FuturesUnordered::new();
+        let mut fixtures_stream = FuturesUnordered::new();
 
         for fixture_no in 0..service.fixtures().len() {
             let ref_svc = &service; // to do only partial move below
@@ -187,7 +205,9 @@ impl<'a> Handler<'a> {
                         preparation.gas,
                     ) {
                         Ok(fut) => fut,
-                        Err(e) => return Err(RuntimeError::PreparationSendFail(fixture_no as u32)),
+                        Err(_e) => {
+                            return Err(RuntimeError::PreparationSendFail(fixture_no as u32))
+                        }
                     }
                     .await; // we don't care about what preparation returns
                 }
@@ -212,6 +232,7 @@ impl<'a> Handler<'a> {
                                     return Err(RuntimeError::PayloadMismatch(
                                         fixture_no as u32,
                                         payload,
+                                        expectation.fail_hint,
                                     ));
                                 }
                                 // TODO: check gas & value somehow
@@ -226,10 +247,70 @@ impl<'a> Handler<'a> {
                     }
                 }
 
-                Ok(())
+                Ok(fixture_no as u32)
             });
         }
 
-        Ok(FailedFixtures::default())
+        while let Some(result) = fixtures_stream.next().await {
+            match result {
+                Ok(index) => {
+                    let _ = gstd::msg::send(source, Event::FixtureSuccess { index }, 0);
+                }
+                Err(
+                    RuntimeError::ExpectationSendFail(index)
+                    | RuntimeError::ExpectationExecutionFail(index, _),
+                ) => {
+                    fails_list.push(FailedFixture {
+                        index,
+                        fail_type: FailType::Execution,
+                        fail_hint: None,
+                    });
+                    let _ = gstd::msg::send(
+                        source,
+                        Event::FixtureFail {
+                            index,
+                            fail_hint: None,
+                            fail_type: FailType::Execution,
+                        },
+                        0,
+                    );
+                }
+                Err(RuntimeError::PreparationSendFail(index)) => {
+                    fails_list.push(FailedFixture {
+                        index,
+                        fail_type: FailType::Preparation,
+                        fail_hint: None,
+                    });
+                    let _ = gstd::msg::send(
+                        source,
+                        Event::FixtureFail {
+                            index,
+                            fail_hint: None,
+                            fail_type: FailType::Preparation,
+                        },
+                        0,
+                    );
+                }
+                Err(RuntimeError::PayloadMismatch(index, _, fail_hint)) => {
+                    fails_list.push(FailedFixture {
+                        index,
+                        fail_type: FailType::PayloadMismatch,
+                        fail_hint: Some(fail_hint),
+                    });
+
+                    let _ = gstd::msg::send(
+                        source,
+                        Event::FixtureFail {
+                            index,
+                            fail_hint: Some(fail_hint),
+                            fail_type: FailType::PayloadMismatch,
+                        },
+                        0,
+                    );
+                }
+            }
+        }
+
+        Ok(fails_list.into())
     }
 }
