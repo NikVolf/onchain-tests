@@ -29,6 +29,7 @@ pub enum Control {
 pub enum Error {
     NotFound,
     NotEnoughGas { actual: u64, needed: u64 },
+    SomeFailed(FailedFixtures),
 }
 
 #[derive(Debug, Decode, Encode)]
@@ -167,7 +168,7 @@ impl<'a> Handler<'a> {
         self.service.write().await.clear_fixtures();
     }
 
-    async fn run_fixtures(&self) -> Result<FailedFixtures, Error> {
+    async fn run_fixtures(&self) -> Result<(), Error> {
         enum RuntimeError {
             PreparationSendFail(u32),
             ExpectationSendFail(u32),
@@ -311,6 +312,10 @@ impl<'a> Handler<'a> {
             }
         }
 
-        Ok(fails_list.into())
+        if fails_list.is_empty() {
+            Ok(())
+        } else {
+            Err(Error::SomeFailed(fails_list.into()))
+        }
     }
 }

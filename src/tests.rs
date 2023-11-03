@@ -2,6 +2,7 @@ extern crate gtest;
 extern crate std;
 
 use self::gtest::{Log, Program, System};
+use crate::io::Error;
 use crate::service::{Expectation, ExpectedMessage, Fixture, Message, StringIndex};
 use gstd::prelude::*;
 
@@ -94,4 +95,36 @@ fn service_rest() {
         .payload_bytes(Vec::<Fixture>::new().encode());
 
     assert!(res.contains(&log));
+}
+
+#[test]
+fn service_run_empty() {
+    let system = System::new();
+    system.init_logger();
+
+    let program = Program::current(&system);
+    let _res = program.send(
+        OWNER_1,
+        io::Init {
+            owner: OWNER_1.into(),
+            service_address: [0u8; 32].into(),
+        },
+    );
+
+    // no fixtures should return ok()
+
+    let res = program.send(SENDER, io::Control::RunFixtures);
+
+    let log = Log::builder()
+        .source(program.id())
+        .dest(SENDER)
+        .payload_bytes(Result::<(), Error>::Ok(()).encode());
+
+    assert!(res.contains(&log));
+
+}
+
+#[test]
+fn service_run_more() {
+
 }
