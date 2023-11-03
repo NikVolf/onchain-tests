@@ -252,3 +252,62 @@ fn service_run_failing() {
 
     assert!(res.contains(&log));
 }
+
+#[test]
+fn service_parallel_run() {
+    let system = System::new();
+    system.init_logger();
+
+    let program = Program::current(&system);
+
+    let program_ping =
+        Program::from_file(&system, std::path::Path::new("./res/wasm/demo_ping.wasm"));
+    let _res = program_ping.send(OWNER_1, 0);
+
+    let _res = program.send(
+        OWNER_1,
+        io::Init {
+            owner: OWNER_1.into(),
+            service_address: program_ping.id().into_bytes().into(),
+        },
+    );
+
+    let fixture = Fixture {
+        description: StringIndex,
+        preparation: vec![],
+        expectations: vec![Expectation {
+            request: Message {
+                gas: 1_000_000_000,
+                value: 0,
+                payload: b"PING".to_vec(),
+            },
+            response: ExpectedMessage {
+                at_least_gas: None,
+                value: Some(0),
+                payload: Some(b"PONG".to_vec()),
+            },
+            fail_hint: StringIndex,
+        }],
+    };
+    let _res = program.send(
+        SENDER,
+        io::Control::AddFixture {
+            fixture: fixture.clone(),
+        },
+    );
+    let _res = program.send(
+        SENDER,
+        io::Control::AddFixture {
+            fixture: fixture.clone(),
+        },
+    );
+
+    let res = program.send(SENDER, io::Control::RunFixtures);
+
+    let log = Log::builder()
+        .source(program.id())
+        .dest(SENDER)
+        .payload_bytes(Result::<(), Error>::Ok(()).encode());
+
+    assert!(res.contains(&log));
+}
