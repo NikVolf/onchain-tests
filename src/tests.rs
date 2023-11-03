@@ -125,6 +125,27 @@ fn service_run_empty() {
 }
 
 #[test]
+fn res_programs_work() {
+    let system = System::new();
+    system.init_logger();
+
+    let program = Program::from_file(&system, std::path::Path::new("./res/wasm/demo_ping.wasm"));
+    let _res = program.send(
+        OWNER_1,
+        0,
+    );
+
+    let res = program.send_bytes(SENDER, b"PING".to_vec());
+
+    let log = Log::builder()
+        .source(program.id())
+        .dest(SENDER)
+        .payload_bytes(b"PONG".to_vec());
+
+    assert!(res.contains(&log));
+}
+
+#[test]
 fn service_run_more() {
 
 }
