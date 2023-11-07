@@ -9,4 +9,5 @@ repository = "https://github.com/NikVolf/onchain-tests"
 
 members = [
     "service",
+    "cli",
 ]

@@ -1,0 +1,15 @@
+[package]
+name = "onchain-tests-cli"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "gear-ot"
+path = "src/main.rs"
+
+[dependencies]
