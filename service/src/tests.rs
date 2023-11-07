@@ -70,7 +70,7 @@ fn service_rest() {
         }],
     };
     let _res = program.send(
-        SENDER,
+        OWNER_1,
         io::Control::AddFixture {
             fixture: fixture.clone(),
         },
@@ -85,7 +85,7 @@ fn service_rest() {
 
     assert!(res.contains(&log));
 
-    let _res = program.send(SENDER, io::Control::RemoveFixture { index: 0 });
+    let _res = program.send(OWNER_1, io::Control::RemoveFixture { index: 0 });
 
     let res = program.send(SENDER, io::Control::GetFixtures);
 
@@ -231,7 +231,7 @@ fn service_run_failing() {
         }],
     };
     let _res = program.send(
-        SENDER,
+        OWNER_1,
         io::Control::AddFixture {
             fixture: fixture.clone(),
         },
@@ -290,13 +290,13 @@ fn service_parallel_run() {
         }],
     };
     let _res = program.send(
-        SENDER,
+        OWNER_1,
         io::Control::AddFixture {
             fixture: fixture.clone(),
         },
     );
     let _res = program.send(
-        SENDER,
+        OWNER_1,
         io::Control::AddFixture {
             fixture: fixture.clone(),
         },

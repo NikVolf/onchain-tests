@@ -23,6 +23,7 @@ pub enum Control {
     },
     ClearFixtures,
     RunFixtures,
+    Terminate,
 }
 
 #[derive(Debug, Decode, Encode)]
@@ -30,6 +31,7 @@ pub enum Error {
     NotFound,
     NotEnoughGas { actual: u64, needed: u64 },
     SomeFailed(FailedFixtures),
+    Unauthorized,
 }
 
 #[derive(Debug, Decode, Encode)]
@@ -73,12 +75,6 @@ impl<T: Encode> From<T> for Reply {
     }
 }
 
-impl Reply {
-    pub fn none() -> Self {
-        Reply { payload: None }
-    }
-}
-
 pub struct Handler<'a> {
     service: &'a RwLock<service::Service>,
     owner: ActorId,
@@ -111,22 +107,14 @@ impl<'a> Handler<'a> {
         use Control::*;
         match control {
             GetOwner => self.get_owner().into(),
-            ReplaceOwner { new_owner } => {
-                self.owner = new_owner;
-                Reply::none()
-            }
+            ReplaceOwner { new_owner } => self.update_owner(new_owner).await.into(),
             GetFixtures => self.get_fixtures().await.into(),
             RemoveFixture { index } => self.remove_fixture(index).await.into(),
             UpdateFixture { index, fixture } => self.update_fixture(index, fixture).await.into(),
-            AddFixture { fixture } => {
-                self.add_fixture(fixture).await;
-                Reply::none()
-            }
-            ClearFixtures => {
-                self.clear_fixtures().await;
-                Reply::none()
-            }
+            AddFixture { fixture } => self.add_fixture(fixture).await.into(),
+            ClearFixtures => self.clear_fixtures().await.into(),
             RunFixtures => self.run_fixtures().await.into(),
+            Terminate => self.terminate().await.into(),
         }
     }
 
@@ -138,7 +126,21 @@ impl<'a> Handler<'a> {
         self.service.read().await.fixtures().to_vec()
     }
 
+    async fn update_owner(&mut self, new_owner: ActorId) -> Result<(), Error> {
+        if self.owner != msg::source() {
+            return Err(Error::Unauthorized)
+        }
+
+        self.owner = new_owner;
+
+        Ok(())
+    }
+
     async fn remove_fixture(&mut self, index: u32) -> Result<(), Error> {
+        if self.owner != msg::source() {
+            return Err(Error::Unauthorized)
+        }
+
         let mut service = self.service.write().await;
         if (index as usize) < service.fixtures().len() {
             service.drop_fixture(index as usize);
@@ -149,6 +151,10 @@ impl<'a> Handler<'a> {
     }
 
     async fn update_fixture(&mut self, index: u32, fixture: service::Fixture) -> Result<(), Error> {
+        if self.owner != msg::source() {
+            return Err(Error::Unauthorized)
+        }
+
         let mut service = self.service.write().await;
 
         if (index as usize) < service.fixtures().len() {
@@ -160,12 +166,32 @@ impl<'a> Handler<'a> {
         }
     }
 
-    async fn add_fixture(&mut self, fixture: service::Fixture) {
+    async fn add_fixture(&mut self, fixture: service::Fixture) -> Result<(), Error> {
+        if self.owner != msg::source() {
+            return Err(Error::Unauthorized)
+        }
+
         self.service.write().await.add_fixture(fixture);
+
+        Ok(())
     }
 
-    async fn clear_fixtures(&mut self) {
+    async fn clear_fixtures(&mut self) -> Result<(), Error> {
+        if self.owner != msg::source() {
+            return Err(Error::Unauthorized)
+        }
+
         self.service.write().await.clear_fixtures();
+
+        Ok(())
+    }
+
+    async fn terminate(&mut self) -> Result<(), Error> {
+        if self.owner == msg::source() {
+            gstd::exec::exit(self.owner)
+        } else {
+            Err(Error::Unauthorized)
+        }
     }
 
     async fn run_fixtures(&self) -> Result<(), Error> {
