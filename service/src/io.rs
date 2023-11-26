@@ -128,7 +128,7 @@ impl<'a> Handler<'a> {
 
     async fn update_owner(&mut self, new_owner: ActorId) -> Result<(), Error> {
         if self.owner != msg::source() {
-            return Err(Error::Unauthorized)
+            return Err(Error::Unauthorized);
         }
 
         self.owner = new_owner;
@@ -138,7 +138,7 @@ impl<'a> Handler<'a> {
 
     async fn remove_fixture(&mut self, index: u32) -> Result<(), Error> {
         if self.owner != msg::source() {
-            return Err(Error::Unauthorized)
+            return Err(Error::Unauthorized);
         }
 
         let mut service = self.service.write().await;
@@ -152,7 +152,7 @@ impl<'a> Handler<'a> {
 
     async fn update_fixture(&mut self, index: u32, fixture: service::Fixture) -> Result<(), Error> {
         if self.owner != msg::source() {
-            return Err(Error::Unauthorized)
+            return Err(Error::Unauthorized);
         }
 
         let mut service = self.service.write().await;
@@ -168,7 +168,7 @@ impl<'a> Handler<'a> {
 
     async fn add_fixture(&mut self, fixture: service::Fixture) -> Result<(), Error> {
         if self.owner != msg::source() {
-            return Err(Error::Unauthorized)
+            return Err(Error::Unauthorized);
         }
 
         self.service.write().await.add_fixture(fixture);
@@ -178,7 +178,7 @@ impl<'a> Handler<'a> {
 
     async fn clear_fixtures(&mut self) -> Result<(), Error> {
         if self.owner != msg::source() {
-            return Err(Error::Unauthorized)
+            return Err(Error::Unauthorized);
         }
 
         self.service.write().await.clear_fixtures();

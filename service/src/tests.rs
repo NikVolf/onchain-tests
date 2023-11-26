@@ -128,7 +128,10 @@ fn res_programs_work() {
     let system = System::new();
     system.init_logger();
 
-    let program = Program::from_file(&system, std::path::Path::new("./../res/wasm/demo_ping.wasm"));
+    let program = Program::from_file(
+        &system,
+        std::path::Path::new("./../res/wasm/demo_ping.wasm"),
+    );
     let _res = program.send(OWNER_1, 0);
 
     let res = program.send_bytes(SENDER, b"PING".to_vec());
@@ -148,8 +151,10 @@ fn service_run_more() {
 
     let program = Program::current(&system);
 
-    let program_ping =
-        Program::from_file(&system, std::path::Path::new("./../res/wasm/demo_ping.wasm"));
+    let program_ping = Program::from_file(
+        &system,
+        std::path::Path::new("./../res/wasm/demo_ping.wasm"),
+    );
     let _res = program_ping.send(OWNER_1, 0);
 
     let _res = program.send(
@@ -201,8 +206,10 @@ fn service_run_failing() {
 
     let program = Program::current(&system);
 
-    let program_ping =
-        Program::from_file(&system, std::path::Path::new("./../res/wasm/demo_ping.wasm"));
+    let program_ping = Program::from_file(
+        &system,
+        std::path::Path::new("./../res/wasm/demo_ping.wasm"),
+    );
     let _res = program_ping.send(OWNER_1, 0);
 
     let _res = program.send(
@@ -260,8 +267,10 @@ fn service_parallel_run() {
 
     let program = Program::current(&system);
 
-    let program_ping =
-        Program::from_file(&system, std::path::Path::new("./../res/wasm/demo_ping.wasm"));
+    let program_ping = Program::from_file(
+        &system,
+        std::path::Path::new("./../res/wasm/demo_ping.wasm"),
+    );
     let _res = program_ping.send(OWNER_1, 0);
 
     let _res = program.send(

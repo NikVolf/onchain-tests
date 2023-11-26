@@ -13,3 +13,11 @@ name = "gear-ot"
 path = "src/main.rs"
 
 [dependencies]
+gcli = { git = "https://github.com/gear-tech/gear.git" }
+gsdk = { git = "https://github.com/gear-tech/gear.git" }
+sp-core = { version = "7.0.0", git = "https://github.com/gear-tech/substrate.git", branch = "gear-polkadot-v0.9.41-canary-no-sandbox-revert-oom-changes", default-features = false }
+color-eyre = "0.6.2"
+tokio = { version = "1.33.0" }
+log = { version = "0.4.20", default-features = false }
+clap = { version = "4.4.7" }
+env_logger = "0.10"
