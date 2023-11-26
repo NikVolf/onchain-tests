@@ -6,8 +6,10 @@ license = "GPL-3.0"
 repository = "https://github.com/NikVolf/onchain-tests"
 
 [workspace]
+resolver = "2"
 
 members = [
     "service",
     "cli",
+    "dummy",
 ]
