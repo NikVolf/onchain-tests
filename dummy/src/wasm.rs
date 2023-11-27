@@ -17,6 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use gstd::{msg, prelude::*};
+use onchain_test_service::{Fixture, StringIndex, Expectation, ExpectedMessage, Message};
+use codec::Encode;
 
 #[no_mangle]
 extern "C" fn handle() {
@@ -25,4 +27,38 @@ extern "C" fn handle() {
     if payload == b"PING" {
         msg::reply_bytes("PONG", 0).expect("Failed to send reply");
     }
+}
+
+#[no_mangle]
+extern "C" fn test() -> u64 {
+    let fixtures = vec![
+        Fixture {
+            description: StringIndex,
+            preparation: vec![],
+            expectations: vec![Expectation {
+                request: Message {
+                    gas: 1_000_000_000,
+                    value: 0,
+                    payload: b"PING".to_vec(),
+                },
+                response: ExpectedMessage {
+                    at_least_gas: None,
+                    value: Some(0),
+                    payload: Some(b"PONG".to_vec()),
+                },
+                fail_hint: StringIndex,
+            }],
+        }
+    ];
+
+    let fixtures_encoded = fixtures.encode().into_boxed_slice();
+
+    let len = fixtures_encoded.len();
+    let ptr = fixtures_encoded.as_ptr();
+
+    let ret = ((ptr as u64) << 32) + (len as u64);
+
+    core::mem::forget(fixtures_encoded);
+
+    ret
 }

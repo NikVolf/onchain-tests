@@ -2,8 +2,10 @@
 
 use gstd::{prelude::*, sync::RwLock, ActorId};
 
-mod io;
+pub mod io;
 mod service;
+
+pub use service::{Fixture, StringIndex, Expectation, ExpectedMessage, Message};
 
 #[cfg(test)]
 mod tests;
