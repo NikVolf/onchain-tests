@@ -19,8 +19,8 @@
 //! gear command entry
 use color_eyre::eyre::Result;
 
-mod opt;
 mod deploy;
+mod opt;
 
 #[tokio::main]
 async fn main() -> Result<()> {

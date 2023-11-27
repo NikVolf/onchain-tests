@@ -16,9 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use gstd::{msg, prelude::*};
-use onchain_test_service::{Fixture, StringIndex, Expectation, ExpectedMessage, Message};
 use codec::Encode;
+use gstd::{msg, prelude::*};
+use onchain_test_types::{Expectation, ExpectedMessage, Fixture, Message, StringIndex};
 
 #[no_mangle]
 extern "C" fn handle() {
@@ -31,25 +31,23 @@ extern "C" fn handle() {
 
 #[no_mangle]
 extern "C" fn test() -> u64 {
-    let fixtures = vec![
-        Fixture {
-            description: StringIndex,
-            preparation: vec![],
-            expectations: vec![Expectation {
-                request: Message {
-                    gas: 1_000_000_000,
-                    value: 0,
-                    payload: b"PING".to_vec(),
-                },
-                response: ExpectedMessage {
-                    at_least_gas: None,
-                    value: Some(0),
-                    payload: Some(b"PONG".to_vec()),
-                },
-                fail_hint: StringIndex,
-            }],
-        }
-    ];
+    let fixtures = vec![Fixture {
+        description: StringIndex,
+        preparation: vec![],
+        expectations: vec![Expectation {
+            request: Message {
+                gas: 1_000_000_000,
+                value: 0,
+                payload: b"PING".to_vec(),
+            },
+            response: ExpectedMessage {
+                at_least_gas: None,
+                value: Some(0),
+                payload: Some(b"PONG".to_vec()),
+            },
+            fail_hint: StringIndex,
+        }],
+    }];
 
     let fixtures_encoded = fixtures.encode().into_boxed_slice();
 

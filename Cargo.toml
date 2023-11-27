@@ -12,4 +12,5 @@ members = [
     "service",
     "cli",
     "dummy",
+    "service/types"
 ]

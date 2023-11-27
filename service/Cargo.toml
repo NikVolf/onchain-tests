@@ -12,6 +12,7 @@ scale-info = { version = "2.5.0", default-features = false, features = ["derive"
 futures = { version = "0.3", default-features = false, features = ["alloc", "async-await"] }
 hashbrown = "0.13"
 async-trait = "*"
+onchain-test-types = { path = "./types" }
 
 [build-dependencies]
 gear-wasm-builder = { git = "https://github.com/gear-tech/gear.git" }

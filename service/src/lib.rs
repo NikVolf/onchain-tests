@@ -5,7 +5,7 @@ use gstd::{prelude::*, sync::RwLock, ActorId};
 pub mod io;
 mod service;
 
-pub use service::{Fixture, StringIndex, Expectation, ExpectedMessage, Message};
+pub use service::{Expectation, ExpectedMessage, Fixture, Message, StringIndex};
 
 #[cfg(test)]
 mod tests;

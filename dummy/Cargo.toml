@@ -1,5 +1,5 @@
 [package]
-name = "demo-ping"
+name = "dummy-wasm"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
@@ -8,7 +8,7 @@ repository.workspace = true
 
 [dependencies]
 gstd = { git = "https://github.com/gear-tech/gear.git" }
-onchain-test-service = { path = "../service" }
+onchain-test-types = { path = "../service/types" }
 codec = { package = "parity-scale-codec", version = "3.4.0", default-features = false, features = ["derive"] }
 
 [build-dependencies]
