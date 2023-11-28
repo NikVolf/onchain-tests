@@ -1,147 +1,59 @@
-use crate::service;
+use crate::{
+    io::{Error, Event, FailType, FailedFixture, FailedFixtures},
+    service,
+};
 
 use futures::stream::{FuturesUnordered, StreamExt};
 use gstd::{msg, prelude::*, sync::RwLock, ActorId};
-use parity_scale_codec::{Decode, Encode};
+use sails_macros::command_handlers;
+use sails_service::{BoxedFuture, SimpleService};
 
-#[derive(Debug, Decode, Encode)]
-pub enum Control {
-    GetOwner,
-    ReplaceOwner {
-        new_owner: ActorId,
-    },
-    GetFixtures,
-    RemoveFixture {
-        index: u32,
-    },
-    UpdateFixture {
-        index: u32,
-        fixture: service::Fixture,
-    },
-    AddFixture {
-        fixture: service::Fixture,
-    },
-    ClearFixtures,
-    RunFixtures,
-    Terminate,
+fn get_svc() -> &'static RwLock<service::Service> {
+    &crate::wasm::SERVICE
 }
 
-#[derive(Debug, Decode, Encode, TypeInfo)]
-pub enum Error {
-    NotFound,
-    NotEnoughGas { actual: u64, needed: u64 },
-    SomeFailed(FailedFixtures),
-    Unauthorized,
+fn static_get_owner() -> &'static mut ActorId {
+    unsafe { crate::wasm::OWNER.as_mut().expect("set during initialization") }
 }
 
-#[derive(Debug, Decode, Encode)]
-pub struct Init {
-    pub owner: ActorId,
-    pub service_address: ActorId,
+pub struct CommandProcessorMeta;
+
+impl sails_service::CommandProcessorMeta for CommandProcessorMeta {
+    type Request = commands::Commands;
+    type Response = commands::CommandResponses;
+    type ProcessFn = fn(Self::Request) -> BoxedFuture<(Self::Response, bool)>;
 }
 
-#[derive(Debug, Decode, Encode, TypeInfo)]
-pub enum FailType {
-    Execution,
-    PayloadMismatch,
-    Preparation,
-}
+pub type Service = SimpleService<CommandProcessorMeta, ()>;
 
-#[derive(Debug, Decode, Encode)]
-pub enum Event {
-    FixtureSuccess {
-        index: u32,
-    },
-    FixtureFail {
-        index: u32,
-        fail_type: FailType,
-        fail_hint: Option<service::StringIndex>,
-    },
-    PreparationFail {
-        index: u32,
-    },
-}
+#[command_handlers]
+pub mod commands {
+    use super::*;
 
-#[derive(Debug)]
-pub struct Reply {
-    pub payload: Option<Vec<u8>>,
-}
-
-impl<T: Encode> From<T> for Reply {
-    fn from(t: T) -> Self {
-        Reply {
-            payload: Some(t.encode()),
-        }
-    }
-}
-
-pub struct Handler<'a> {
-    service: &'a RwLock<service::Service>,
-    owner: ActorId,
-}
-
-#[derive(Debug, Decode, Encode, TypeInfo)]
-pub struct FailedFixture {
-    pub index: u32,
-    pub fail_type: FailType,
-    pub fail_hint: Option<service::StringIndex>,
-}
-
-#[derive(Default, Debug, Decode, Encode, TypeInfo)]
-pub struct FailedFixtures {
-    pub indices: Vec<FailedFixture>,
-}
-
-impl From<Vec<FailedFixture>> for FailedFixtures {
-    fn from(indices: Vec<FailedFixture>) -> Self {
-        Self { indices }
-    }
-}
-
-impl<'a> Handler<'a> {
-    pub fn new(service: &'a RwLock<service::Service>, owner: ActorId) -> Self {
-        Self { service, owner }
+    fn get_owner() -> Result<ActorId, ()> {
+        Ok(super::static_get_owner().clone())
     }
 
-    pub async fn dispatch(&mut self, control: Control) -> Reply {
-        use Control::*;
-        match control {
-            GetOwner => self.get_owner().into(),
-            ReplaceOwner { new_owner } => self.update_owner(new_owner).await.into(),
-            GetFixtures => self.get_fixtures().await.into(),
-            RemoveFixture { index } => self.remove_fixture(index).await.into(),
-            UpdateFixture { index, fixture } => self.update_fixture(index, fixture).await.into(),
-            AddFixture { fixture } => self.add_fixture(fixture).await.into(),
-            ClearFixtures => self.clear_fixtures().await.into(),
-            RunFixtures => self.run_fixtures().await.into(),
-            Terminate => self.terminate().await.into(),
-        }
+    async fn get_fixtures() -> Result<Vec<service::Fixture>, ()> {
+        Ok(get_svc().read().await.fixtures().to_vec())
     }
 
-    fn get_owner(&self) -> ActorId {
-        self.owner.clone()
-    }
-
-    async fn get_fixtures(&self) -> Vec<service::Fixture> {
-        self.service.read().await.fixtures().to_vec()
-    }
-
-    async fn update_owner(&mut self, new_owner: ActorId) -> Result<(), Error> {
-        if self.owner != msg::source() {
+    async fn update_owner(new_owner: ActorId) -> Result<(), Error> {
+        if static_get_owner() != &msg::source() {
             return Err(Error::Unauthorized);
         }
 
-        self.owner = new_owner;
+        *static_get_owner() = new_owner;
 
         Ok(())
     }
 
-    async fn remove_fixture(&mut self, index: u32) -> Result<(), Error> {
-        if self.owner != msg::source() {
+    async fn remove_fixture(index: u32) -> Result<(), Error> {
+        if static_get_owner() != &msg::source() {
             return Err(Error::Unauthorized);
         }
 
-        let mut service = self.service.write().await;
+        let mut service = get_svc().write().await;
         if (index as usize) < service.fixtures().len() {
             service.drop_fixture(index as usize);
             Ok(())
@@ -150,13 +62,12 @@ impl<'a> Handler<'a> {
         }
     }
 
-    async fn update_fixture(&mut self, index: u32, fixture: service::Fixture) -> Result<(), Error> {
-        if self.owner != msg::source() {
+    async fn update_fixture(index: u32, fixture: service::Fixture) -> Result<(), Error> {
+        if static_get_owner() != &msg::source() {
             return Err(Error::Unauthorized);
         }
 
-        let mut service = self.service.write().await;
-
+        let mut service = get_svc().write().await;
         if (index as usize) < service.fixtures().len() {
             service.fixtures_mut()[index as usize] = fixture;
 
@@ -166,35 +77,35 @@ impl<'a> Handler<'a> {
         }
     }
 
-    async fn add_fixture(&mut self, fixture: service::Fixture) -> Result<(), Error> {
-        if self.owner != msg::source() {
+    async fn add_fixture(fixture: service::Fixture) -> Result<(), Error> {
+        if static_get_owner() != &msg::source() {
             return Err(Error::Unauthorized);
         }
 
-        self.service.write().await.add_fixture(fixture);
+        get_svc().write().await.add_fixture(fixture);
 
         Ok(())
     }
 
-    async fn clear_fixtures(&mut self) -> Result<(), Error> {
-        if self.owner != msg::source() {
+    async fn clear_fixtures() -> Result<(), Error> {
+        if static_get_owner() != &msg::source() {
             return Err(Error::Unauthorized);
         }
 
-        self.service.write().await.clear_fixtures();
+        get_svc().write().await.clear_fixtures();
 
         Ok(())
     }
 
-    async fn terminate(&mut self) -> Result<(), Error> {
-        if self.owner == msg::source() {
-            gstd::exec::exit(self.owner)
+    async fn terminate() -> Result<(), Error> {
+        if static_get_owner() == &msg::source() {
+            gstd::exec::exit(static_get_owner().clone())
         } else {
             Err(Error::Unauthorized)
         }
     }
 
-    async fn run_fixtures(&self) -> Result<(), Error> {
+    async fn run_fixtures() -> Result<(), Error> {
         enum RuntimeError {
             PreparationSendFail(u32),
             ExpectationSendFail(u32),
@@ -203,7 +114,7 @@ impl<'a> Handler<'a> {
         }
 
         let source = msg::source();
-        let service = self.service.read().await;
+        let service = get_svc().read().await;
 
         let gas_required = service.gas_required();
         let gas_available = gstd::exec::gas_available();

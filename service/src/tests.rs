@@ -4,7 +4,7 @@ extern crate std;
 use self::gtest::{Log, Program, System};
 use crate::io::{Error, FailType, FailedFixture};
 use onchain_test_types::{Expectation, ExpectedMessage, Fixture, Message, StringIndex};
-use gstd::prelude::*;
+use gstd::{prelude::*, ActorId};
 
 use crate::io;
 
@@ -30,10 +30,12 @@ fn create() {
 
     let res = program.send(SENDER, io::Control::GetOwner);
 
+    let res_func: Result<ActorId, ()> = Result::Ok(OWNER_1.clone().into());
+
     let log = Log::builder()
         .source(program.id())
         .dest(SENDER)
-        .payload_bytes(&OWNER_1[..]);
+        .payload_bytes(res_func.encode());
 
     assert!(res.contains(&log));
 }

@@ -7,12 +7,15 @@ edition = "2018"
 [dependencies]
 gstd = { git = "https://github.com/gear-tech/gear.git"}
 gcore = { git = "https://github.com/gear-tech/gear.git"}
-codec = { package = "parity-scale-codec", version = "3.4.0", default-features = false, features = ["derive"] }
+gsys = { git = "https://github.com/gear-tech/gear.git" }
+parity-scale-codec = { version = "3.4.0", default-features = false, features = ["derive"] }
 scale-info = { version = "2.5.0", default-features = false, features = ["derive"] }
 futures = { version = "0.3", default-features = false, features = ["alloc", "async-await"] }
 hashbrown = "0.13"
 async-trait = "*"
 onchain-test-types = { path = "./types" }
+sails-macros = { git = "https://github.com/gear-tech/sails", branch = "dd/service" }
+sails-service = { git = "https://github.com/gear-tech/sails", branch = "dd/service" }
 
 [build-dependencies]
 gear-wasm-builder = { git = "https://github.com/gear-tech/gear.git"}
@@ -22,6 +25,7 @@ gtest = { git = "https://github.com/gear-tech/gear.git"}
 hex-literal = "*"
 
 [features]
+handlers = []
 debug = ["gstd/debug"]
-default = ["std"]
+default = ["std", "handlers"]
 std = []

@@ -8,19 +8,23 @@ mod code {
 #[cfg(feature = "std")]
 pub use code::WASM_BINARY_OPT as WASM_BINARY;
 
+use crate::sails::{commands::handlers as c_handlers, Service};
+use sails_service::{CompositeService, Service as ServiceTrait};
+
 pub mod io;
+mod sails;
 mod service;
 
 #[cfg(test)]
 mod tests;
 
 #[cfg(not(feature = "std"))]
-mod wasm {
+pub mod wasm {
     use super::{io, service};
     use gstd::{prelude::*, sync::RwLock, ActorId};
 
-    static SERVICE: RwLock<service::Service> = RwLock::new(service::Service::empty());
-    static mut OWNER: Option<ActorId> = None;
+    pub static SERVICE: RwLock<service::Service> = RwLock::new(service::Service::empty());
+    pub static mut OWNER: Option<ActorId> = None;
 
     #[gstd::async_init]
     async fn init() {
@@ -37,18 +41,20 @@ mod wasm {
 
     #[gstd::async_main]
     async fn main() {
-        let mut handler = io::Handler::new(&SERVICE, unsafe {
-            OWNER
-                .as_ref()
-                .expect("Owner not initialized somehow")
-                .clone()
-        });
-        let request: io::Control = gstd::msg::load().expect("Unable to parse control message");
+        let input = gstd::msg::load_bytes().expect("This needs to be handled in some way: read error");
+        let (output, is_error) = Service::new(
+            |command| Box::pin(c_handlers::process_commands(command)),
+            |()| ((), true),
+        )
+        .process_command(&input)
+        .await;
 
-        let reply = handler.dispatch(request).await;
-
-        if let Some(payload) = reply.payload {
-            gcore::msg::reply(&payload[..], 0).expect("Failed to reply");
+        if is_error {
+            unsafe {
+                gsys::gr_panic(output.as_ptr(), output.len() as u32);
+            }
         }
+        gstd::msg::reply(output, 0).expect("This needs to be handled in a consistent way: reply error");
     }
+
 }

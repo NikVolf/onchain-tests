@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.4.0", default-features = false, features = ["derive"] }
-gstd = { git = "https://github.com/gear-tech/gear.git"}
+gstd = { git = "https://github.com/gear-tech/gear.git" }
+scale-info = { version = "2.5.0", default-features = false, features = ["derive"] }
 
 [lib]

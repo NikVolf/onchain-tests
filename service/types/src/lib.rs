@@ -3,11 +3,11 @@ use codec::{Decode, Encode};
 use gstd::prelude::*;
 
 // TODO: use metadata-stored static strings once ready
-#[derive(Clone, Copy, Debug, Encode, Decode)]
+#[derive(Clone, Copy, Debug, Encode, Decode, TypeInfo)]
 pub struct StringIndex;
 
 /// Message to be sent or to be expected.
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, TypeInfo)]
 pub struct Message {
     pub gas: u64,
     pub value: u128,
@@ -15,7 +15,7 @@ pub struct Message {
 }
 
 /// Message to be expected.
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, TypeInfo)]
 pub struct ExpectedMessage {
     pub at_least_gas: Option<u64>,
     pub value: Option<u128>,
@@ -23,7 +23,7 @@ pub struct ExpectedMessage {
 }
 
 /// Simple expectation of a particular request.
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, TypeInfo)]
 pub struct Expectation {
     pub request: Message,
     pub response: ExpectedMessage,
@@ -33,7 +33,7 @@ pub struct Expectation {
 /// Single set of tests with common setup procedure.
 ///
 /// Setup and run bunch of request with expected responses.
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, TypeInfo)]
 pub struct Fixture {
     pub description: StringIndex,
     pub preparation: Vec<Message>,
