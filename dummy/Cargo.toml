@@ -7,14 +7,19 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-gstd = { git = "https://github.com/gear-tech/gear.git" }
+gstd = { git = "https://github.com/gear-tech/gear.git", branch = "nv-add-pre-processor-in-builder" }
 onchain-test-types = { path = "../service/types" }
 codec = { package = "parity-scale-codec", version = "3.4.0", default-features = false, features = ["derive"] }
 
 [build-dependencies]
-gear-wasm-builder = { git = "https://github.com/gear-tech/gear.git" }
+gear-wasm-builder = { git = "https://github.com/gear-tech/gear.git", branch = "nv-add-pre-processor-in-builder" }
+anyhow = "*"
+pwasm-utils = "0.19.0"
 
 [features]
 debug = ["gstd/debug"]
 default = ["std"]
 std = []
+
+[patch.crates-io]
+parity-wasm = { version = "0.45.0", git = "https://github.com/gear-tech/parity-wasm", branch = "v0.45.0-sign-ext" }

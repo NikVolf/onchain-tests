@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //! commands
+use crate::deploy;
 use clap::Parser;
 use env_logger::{Builder, Env};
 use gcli::{
@@ -43,6 +44,7 @@ pub enum Command {
     Upload(upload::Upload),
     Transfer(transfer::Transfer),
     Update(update::Update),
+    Deploy(deploy::Deploy),
 }
 
 /// gear command-line tools
@@ -142,6 +144,7 @@ impl Opt {
                     Command::Upload(upload) => upload.exec(signer).await?,
                     Command::Transfer(transfer) => transfer.exec(signer).await?,
                     Command::Reply(reply) => reply.exec(signer).await?,
+                    Command::Deploy(deploy) => deploy.exec(signer).await?,
                     _ => unreachable!("Already matched"),
                 }
             }

@@ -1,10 +1,11 @@
-use std::{fs, path::PathBuf};
 use clap::Parser;
 use gsdk::signer::Signer;
 use onchain_test_types::Fixture;
+use std::{fs, path::PathBuf};
+use codec::Decode;
 
 #[derive(Debug, Parser)]
-struct Deploy {
+pub struct Deploy {
     code: PathBuf,
 
     #[arg(short, long, default_value = "0x")]
@@ -15,7 +16,44 @@ struct Deploy {
 }
 
 fn generate_fixtures(wasm_code: Vec<u8>) -> Vec<Fixture> {
-    unimplemented!()
+    use wasmtime::*;
+
+    let engine = Engine::default();
+    let module = Module::new(&engine, &wasm_code).unwrap();
+
+    let mut store = Store::new(&engine, ());
+
+    let mem = Memory::new(&mut store, MemoryType::new(256, None)).unwrap();
+
+    let alloc = Func::wrap(&mut store, move |mut caller: Caller<'_, ()>, pages: i32| -> i32 {
+        mem.grow(&mut caller, pages as u64).unwrap();
+        mem.size(&mut caller) as i32
+    });
+
+    let free = Func::wrap(&mut store, |page: i32| -> i32 {
+        0
+    });
+
+    let gr_panic = Func::wrap(&mut store, |a: i32, b: i32| {
+        println!("panic at {}:{}", a, b);
+    });
+
+    let imports = [mem.into(), alloc.into(), free.into(), gr_panic.into()];
+
+    let instance = Instance::new(&mut store, &module, &imports).unwrap();
+
+
+    let test_fn = instance
+        .get_typed_func::<(), i64>(&mut store, "test")
+        .unwrap();
+
+    let ptr_len = test_fn.call(&mut store, ()).unwrap() as u64;
+    let ptr = ((ptr_len & 0xffffffff00000000u64) >> 32) as usize;
+    let len = (ptr_len &  0x00000000ffffffffu64) as usize;
+
+    let extracted_vec = mem.data(&mut store)[ptr..ptr+len].to_vec();
+
+    Vec::<Fixture>::decode(&mut &extracted_vec[..]).unwrap()
 }
 
 impl Deploy {
@@ -24,6 +62,8 @@ impl Deploy {
         let code = fs::read(&self.code)?;
 
         let fixtures = generate_fixtures(code);
+
+        println!("Found fixtures: {}", fixtures.len());
 
         Ok(())
     }

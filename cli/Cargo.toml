@@ -13,8 +13,8 @@ name = "gear-ot"
 path = "src/main.rs"
 
 [dependencies]
-gcli = { git = "https://github.com/gear-tech/gear.git" }
-gsdk = { git = "https://github.com/gear-tech/gear.git" }
+gcli = { git = "https://github.com/gear-tech/gear.git", branch = "nv-add-pre-processor-in-builder" }
+gsdk = { git = "https://github.com/gear-tech/gear.git", branch = "nv-add-pre-processor-in-builder" }
 sp-core = { version = "7.0.0", git = "https://github.com/gear-tech/substrate.git", branch = "gear-polkadot-v0.9.41-canary-no-sandbox-revert-oom-changes", default-features = false }
 color-eyre = "0.6.2"
 tokio = { version = "1.33.0" }
@@ -22,3 +22,5 @@ log = { version = "0.4.20", default-features = false }
 clap = { version = "4.4.7" }
 env_logger = "0.10"
 onchain-test-types = { path = "../service/types" }
+codec = { package = "parity-scale-codec", version = "3.4.0", default-features = false, features = ["derive"] }
+wasmtime = "*"
