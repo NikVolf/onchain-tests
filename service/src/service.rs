@@ -2,7 +2,7 @@
 
 use gstd::{prelude::*, ActorId};
 
-pub use onchain_test_types::{Expectation, ExpectedMessage, Fixture, Message, StringIndex};
+pub use onchain_test_types::{Fixture, StringIndex};
 
 /// Service with assigned fixture.
 #[derive(Debug, Encode, Decode)]
