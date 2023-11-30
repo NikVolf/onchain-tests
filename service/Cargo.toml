@@ -5,8 +5,8 @@ build = "build.rs"
 edition = "2018"
 
 [dependencies]
-gstd = { git = "https://github.com/gear-tech/gear.git", branch = "nv-add-pre-processor-in-builder" }
-gcore = { git = "https://github.com/gear-tech/gear.git", branch = "nv-add-pre-processor-in-builder" }
+gstd = { git = "https://github.com/gear-tech/gear.git"}
+gcore = { git = "https://github.com/gear-tech/gear.git"}
 codec = { package = "parity-scale-codec", version = "3.4.0", default-features = false, features = ["derive"] }
 scale-info = { version = "2.5.0", default-features = false, features = ["derive"] }
 futures = { version = "0.3", default-features = false, features = ["alloc", "async-await"] }
@@ -15,10 +15,10 @@ async-trait = "*"
 onchain-test-types = { path = "./types" }
 
 [build-dependencies]
-gear-wasm-builder = { git = "https://github.com/gear-tech/gear.git", branch = "nv-add-pre-processor-in-builder" }
+gear-wasm-builder = { git = "https://github.com/gear-tech/gear.git"}
 
 [dev-dependencies]
-gtest = { git = "https://github.com/gear-tech/gear.git", branch = "nv-add-pre-processor-in-builder" }
+gtest = { git = "https://github.com/gear-tech/gear.git"}
 hex-literal = "*"
 
 [features]

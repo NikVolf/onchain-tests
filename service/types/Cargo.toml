@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.4.0", default-features = false, features = ["derive"] }
-gstd = { git = "https://github.com/gear-tech/gear.git", branch = "nv-add-pre-processor-in-builder" }
+gstd = { git = "https://github.com/gear-tech/gear.git"}
 
 [lib]

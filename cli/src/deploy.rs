@@ -23,25 +23,35 @@ fn generate_fixtures(wasm_code: Vec<u8>) -> Vec<Fixture> {
 
     let mut store = Store::new(&engine, ());
 
+    let mut linker = Linker::new(&engine);
+
     let mem = Memory::new(&mut store, MemoryType::new(256, None)).unwrap();
 
-    let alloc = Func::wrap(
-        &mut store,
-        move |mut caller: Caller<'_, ()>, pages: i32| -> i32 {
-            mem.grow(&mut caller, pages as u64).unwrap();
-            mem.size(&mut caller) as i32
-        },
-    );
+    linker
+        .func_wrap(
+            "env",
+            "alloc",
+            move |mut caller: Caller<'_, ()>, pages: i32| -> i32 {
+                let prev_size = mem.size(&mut caller) as i32;
+                mem.grow(&mut caller, pages as u64).unwrap();
+                prev_size
+            },
+        )
+        .unwrap();
 
-    let free = Func::wrap(&mut store, |_page: i32| -> i32 { 0 });
+    linker
+        .func_wrap("env", "free", |_page: i32| -> i32 { 0 })
+        .unwrap();
 
-    let gr_panic = Func::wrap(&mut store, |a: i32, b: i32| {
-        println!("panic at {}:{}", a, b);
-    });
+    linker
+        .func_wrap("env", "gr_panic", |a: i32, b: i32| {
+            println!("panic at {}:{}", a, b);
+        })
+        .unwrap();
 
-    let imports = [mem.into(), alloc.into(), free.into(), gr_panic.into()];
+    linker.define(&mut store, "env", "memory", mem).unwrap();
 
-    let instance = Instance::new(&mut store, &module, &imports).unwrap();
+    let instance = linker.instantiate(&mut store, &module).unwrap();
 
     let test_fn = instance
         .get_typed_func::<(), i64>(&mut store, "test")
@@ -76,8 +86,8 @@ impl Deploy {
             .await?
             .min_limit;
 
-        // Estimate gas and upload program.
         let gas_limit = signer.api().cmp_gas_limit(gas)?;
+
         signer
             .calls
             .upload_program(code, vec![], vec![], gas_limit, 0)
