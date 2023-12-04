@@ -18,7 +18,9 @@
 
 use codec::Encode;
 use gstd::{msg, prelude::*};
-use onchain_test_types::{Expectation, ExpectedMessage, Fixture, Message, StringIndex};
+use onchain_test_types::{
+    Expectation, ExpectedMessage, Fixture, FixtureExecution, Message, StringIndex,
+};
 
 #[no_mangle]
 extern "C" fn handle() {
@@ -50,19 +52,21 @@ macro_rules! ext_vec {
 ext_vec!(test, {
     vec![Fixture {
         description: StringIndex,
-        preparation: vec![],
-        expectations: vec![Expectation {
-            request: Message {
-                gas: 1_000_000_000,
-                value: 0,
-                payload: b"PING".to_vec(),
-            },
-            response: ExpectedMessage {
-                at_least_gas: None,
-                value: Some(0),
-                payload: Some(b"PONG".to_vec()),
-            },
-            fail_hint: StringIndex,
-        }],
+        execution: FixtureExecution::MessagePassing {
+            preparation: vec![],
+            expectations: vec![Expectation {
+                request: Message {
+                    gas: 1_000_000_000,
+                    value: 0,
+                    payload: b"PING".to_vec(),
+                },
+                response: ExpectedMessage {
+                    at_least_gas: None,
+                    value: Some(0),
+                    payload: Some(b"PONG".to_vec()),
+                },
+                fail_hint: StringIndex,
+            }],
+        },
     }]
 });

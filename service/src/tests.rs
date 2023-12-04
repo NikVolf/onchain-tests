@@ -4,7 +4,9 @@ extern crate std;
 use self::gtest::{Log, Program, System};
 use crate::io::{Error, FailType, FailedFixture};
 use gstd::prelude::*;
-use onchain_test_types::{Expectation, ExpectedMessage, Fixture, Message, StringIndex};
+use onchain_test_types::{
+    Expectation, ExpectedMessage, Fixture, FixtureExecution, Message, StringIndex,
+};
 
 use crate::io;
 
@@ -54,20 +56,22 @@ fn service_rest() {
 
     let fixture = Fixture {
         description: StringIndex,
-        preparation: vec![],
-        expectations: vec![Expectation {
-            request: Message {
-                gas: 1000000000,
-                value: 0,
-                payload: b"ping".to_vec(),
-            },
-            response: ExpectedMessage {
-                at_least_gas: None,
-                value: Some(0),
-                payload: Some(b"pong".to_vec()),
-            },
-            fail_hint: StringIndex,
-        }],
+        execution: FixtureExecution::MessagePassing {
+            preparation: vec![],
+            expectations: vec![Expectation {
+                request: Message {
+                    gas: 1000000000,
+                    value: 0,
+                    payload: b"ping".to_vec(),
+                },
+                response: ExpectedMessage {
+                    at_least_gas: None,
+                    value: Some(0),
+                    payload: Some(b"pong".to_vec()),
+                },
+                fail_hint: StringIndex,
+            }],
+        },
     };
     let _res = program.send(
         OWNER_1,
@@ -167,20 +171,22 @@ fn service_run_more() {
 
     let fixture = Fixture {
         description: StringIndex,
-        preparation: vec![],
-        expectations: vec![Expectation {
-            request: Message {
-                gas: 1_000_000_000,
-                value: 0,
-                payload: b"PING".to_vec(),
-            },
-            response: ExpectedMessage {
-                at_least_gas: None,
-                value: Some(0),
-                payload: Some(b"PONG".to_vec()),
-            },
-            fail_hint: StringIndex,
-        }],
+        execution: FixtureExecution::MessagePassing {
+            preparation: vec![],
+            expectations: vec![Expectation {
+                request: Message {
+                    gas: 1_000_000_000,
+                    value: 0,
+                    payload: b"PING".to_vec(),
+                },
+                response: ExpectedMessage {
+                    at_least_gas: None,
+                    value: Some(0),
+                    payload: Some(b"PONG".to_vec()),
+                },
+                fail_hint: StringIndex,
+            }],
+        },
     };
     let _res = program.send(
         SENDER,
@@ -222,20 +228,22 @@ fn service_run_failing() {
 
     let fixture = Fixture {
         description: StringIndex,
-        preparation: vec![],
-        expectations: vec![Expectation {
-            request: Message {
-                gas: 1_000_000_000,
-                value: 0,
-                payload: b"PING".to_vec(),
-            },
-            response: ExpectedMessage {
-                at_least_gas: None,
-                value: Some(0),
-                payload: Some(b"WRONG REPLY EXPECTED".to_vec()),
-            },
-            fail_hint: StringIndex,
-        }],
+        execution: FixtureExecution::MessagePassing {
+            preparation: vec![],
+            expectations: vec![Expectation {
+                request: Message {
+                    gas: 1_000_000_000,
+                    value: 0,
+                    payload: b"PING".to_vec(),
+                },
+                response: ExpectedMessage {
+                    at_least_gas: None,
+                    value: Some(0),
+                    payload: Some(b"WRONG REPLY EXPECTED".to_vec()),
+                },
+                fail_hint: StringIndex,
+            }],
+        },
     };
     let _res = program.send(
         OWNER_1,
@@ -283,20 +291,22 @@ fn service_parallel_run() {
 
     let fixture = Fixture {
         description: StringIndex,
-        preparation: vec![],
-        expectations: vec![Expectation {
-            request: Message {
-                gas: 1_000_000_000,
-                value: 0,
-                payload: b"PING".to_vec(),
-            },
-            response: ExpectedMessage {
-                at_least_gas: None,
-                value: Some(0),
-                payload: Some(b"PONG".to_vec()),
-            },
-            fail_hint: StringIndex,
-        }],
+        execution: FixtureExecution::MessagePassing {
+            preparation: vec![],
+            expectations: vec![Expectation {
+                request: Message {
+                    gas: 1_000_000_000,
+                    value: 0,
+                    payload: b"PING".to_vec(),
+                },
+                response: ExpectedMessage {
+                    at_least_gas: None,
+                    value: Some(0),
+                    payload: Some(b"PONG".to_vec()),
+                },
+                fail_hint: StringIndex,
+            }],
+        },
     };
     let _res = program.send(
         OWNER_1,

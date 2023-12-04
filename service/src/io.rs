@@ -2,7 +2,14 @@ use crate::service;
 
 use codec::{Decode, Encode};
 use futures::stream::{FuturesUnordered, StreamExt};
-use gstd::{msg, prelude::*, sync::RwLock, ActorId};
+use gstd::{
+    msg,
+    prelude::*,
+    sync::{RwLock, RwLockReadGuard},
+    ActorId,
+};
+use onchain_test_types::{Expectation, Fixture, FixtureExecution, Message};
+use service::Service;
 
 #[derive(Debug, Decode, Encode)]
 pub enum Control {
@@ -95,6 +102,84 @@ pub struct FailedFixtures {
 impl From<Vec<FailedFixture>> for FailedFixtures {
     fn from(indices: Vec<FailedFixture>) -> Self {
         Self { indices }
+    }
+}
+
+enum RuntimeError {
+    PreparationSendFail(u32),
+    ExpectationSendFail(u32),
+    ExpectationExecutionFail(u32, gstd::errors::Error),
+    PayloadMismatch(u32, Vec<u8>, service::StringIndex),
+}
+
+async fn execute_message_passing(
+    ref_svc: &RwLockReadGuard<'_, Service>,
+    fixture_no: usize,
+    preparations: &[Message],
+    expectations: &[Expectation],
+) -> Result<(), RuntimeError> {
+    // preparations
+    for preparation in preparations {
+        let _ = match gstd::msg::send_bytes_for_reply(
+            ref_svc.address(),
+            preparation.payload.clone(),
+            0, // TODO: figure out preparation.value,
+            preparation.gas,
+        ) {
+            Ok(fut) => fut,
+            Err(_e) => return Err(RuntimeError::PreparationSendFail(fixture_no as u32)),
+        }
+        .await; // we don't care about what preparation returns
+    }
+
+    // expectations
+    for expectation in expectations {
+        let result = match gstd::msg::send_bytes_for_reply(
+            ref_svc.address(),
+            expectation.request.payload.clone(),
+            0, // TODO: figure out expectation.request.value,
+            expectation.request.gas,
+        ) {
+            Ok(fut) => fut,
+            Err(_) => return Err(RuntimeError::ExpectationSendFail(fixture_no as u32)),
+        }
+        .await;
+
+        match result {
+            Ok(payload) => {
+                if let Some(expected_payload) = expectation.response.payload.as_ref() {
+                    if expected_payload != &payload[..] {
+                        return Err(RuntimeError::PayloadMismatch(
+                            fixture_no as u32,
+                            payload,
+                            expectation.fail_hint,
+                        ));
+                    }
+                    // TODO: check gas & value somehow
+                }
+            }
+            Err(e) => {
+                return Err(RuntimeError::ExpectationExecutionFail(fixture_no as u32, e));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn execute_fixture(
+    ref_svc: &RwLockReadGuard<'_, Service>,
+    fixture_no: usize,
+    fixture: &Fixture,
+) -> Result<(), RuntimeError> {
+    match &fixture.execution {
+        FixtureExecution::MessagePassing {
+            preparation,
+            expectations,
+        } => {
+            execute_message_passing(ref_svc, fixture_no, &preparation[..], &expectations[..]).await
+        }
+        FixtureExecution::Call { .. } => unimplemented!(),
     }
 }
 
@@ -195,13 +280,6 @@ impl<'a> Handler<'a> {
     }
 
     async fn run_fixtures(&self) -> Result<(), Error> {
-        enum RuntimeError {
-            PreparationSendFail(u32),
-            ExpectationSendFail(u32),
-            ExpectationExecutionFail(u32, gstd::errors::Error),
-            PayloadMismatch(u32, Vec<u8>, service::StringIndex),
-        }
-
         let source = msg::source();
         let service = self.service.read().await;
 
@@ -222,59 +300,9 @@ impl<'a> Handler<'a> {
             let ref_svc = &service; // to do only partial move below
             fixtures_stream.push(async move {
                 let fixture = &ref_svc.fixtures()[fixture_no];
-
-                // preparations
-                for preparation in fixture.preparation.iter() {
-                    let _ = match gstd::msg::send_bytes_for_reply(
-                        ref_svc.address(),
-                        preparation.payload.clone(),
-                        0, // TODO: figure out preparation.value,
-                        preparation.gas,
-                    ) {
-                        Ok(fut) => fut,
-                        Err(_e) => {
-                            return Err(RuntimeError::PreparationSendFail(fixture_no as u32))
-                        }
-                    }
-                    .await; // we don't care about what preparation returns
-                }
-
-                // expectations
-                for expectation in fixture.expectations.iter() {
-                    let result = match gstd::msg::send_bytes_for_reply(
-                        ref_svc.address(),
-                        expectation.request.payload.clone(),
-                        0, // TODO: figure out expectation.request.value,
-                        expectation.request.gas,
-                    ) {
-                        Ok(fut) => fut,
-                        Err(_) => return Err(RuntimeError::ExpectationSendFail(fixture_no as u32)),
-                    }
-                    .await;
-
-                    match result {
-                        Ok(payload) => {
-                            if let Some(expected_payload) = expectation.response.payload.as_ref() {
-                                if expected_payload != &payload[..] {
-                                    return Err(RuntimeError::PayloadMismatch(
-                                        fixture_no as u32,
-                                        payload,
-                                        expectation.fail_hint,
-                                    ));
-                                }
-                                // TODO: check gas & value somehow
-                            }
-                        }
-                        Err(e) => {
-                            return Err(RuntimeError::ExpectationExecutionFail(
-                                fixture_no as u32,
-                                e,
-                            ));
-                        }
-                    }
-                }
-
-                Ok(fixture_no as u32)
+                execute_fixture(ref_svc, fixture_no, &fixture)
+                    .await
+                    .map(|_| fixture_no as u32)
             });
         }
 
