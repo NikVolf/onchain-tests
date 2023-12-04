@@ -15,7 +15,7 @@ pub struct Deploy {
     salt: String,
 }
 
-fn generate_fixtures(wasm_code: Vec<u8>) -> Vec<Fixture> {
+fn generate_fixtures(wasm_code: Vec<u8>) -> gcli::result::Result<Vec<Fixture>> {
     use wasmtime::*;
 
     let engine = Engine::default();
@@ -27,35 +27,27 @@ fn generate_fixtures(wasm_code: Vec<u8>) -> Vec<Fixture> {
 
     let mem = Memory::new(&mut store, MemoryType::new(256, None)).unwrap();
 
-    linker
-        .func_wrap(
-            "env",
-            "alloc",
-            move |mut caller: Caller<'_, ()>, pages: i32| -> i32 {
-                let prev_size = mem.size(&mut caller) as i32;
-                mem.grow(&mut caller, pages as u64).unwrap();
-                prev_size
-            },
-        )
-        .unwrap();
+    linker.func_wrap(
+        "env",
+        "alloc",
+        move |mut caller: Caller<'_, ()>, pages: i32| -> i32 {
+            let prev_size = mem.size(&mut caller) as i32;
+            mem.grow(&mut caller, pages as u64).unwrap();
+            prev_size
+        },
+    )?;
 
-    linker
-        .func_wrap("env", "free", |_page: i32| -> i32 { 0 })
-        .unwrap();
+    linker.func_wrap("env", "free", |_page: i32| -> i32 { 0 })?;
 
-    linker
-        .func_wrap("env", "gr_panic", |a: i32, b: i32| {
-            println!("panic at {}:{}", a, b);
-        })
-        .unwrap();
+    linker.func_wrap("env", "gr_panic", |a: i32, b: i32| {
+        println!("panic at {}:{}", a, b);
+    })?;
 
-    linker.define(&mut store, "env", "memory", mem).unwrap();
+    linker.define(&mut store, "env", "memory", mem)?;
 
-    let instance = linker.instantiate(&mut store, &module).unwrap();
+    let instance = linker.instantiate(&mut store, &module)?;
 
-    let test_fn = instance
-        .get_typed_func::<(), i64>(&mut store, "test")
-        .unwrap();
+    let test_fn = instance.get_typed_func::<(), i64>(&mut store, "test")?;
 
     let ptr_len = test_fn.call(&mut store, ()).unwrap() as u64;
     let ptr = ((ptr_len & 0xffffffff00000000u64) >> 32) as usize;
@@ -63,7 +55,7 @@ fn generate_fixtures(wasm_code: Vec<u8>) -> Vec<Fixture> {
 
     let extracted_vec = mem.data(&mut store)[ptr..ptr + len].to_vec();
 
-    Vec::<Fixture>::decode(&mut &extracted_vec[..]).unwrap()
+    Ok(Vec::<Fixture>::decode(&mut &extracted_vec[..])?)
 }
 
 impl Deploy {
@@ -73,7 +65,7 @@ impl Deploy {
 
         println!("Parsing fixtures...");
 
-        let fixtures = generate_fixtures(code);
+        let fixtures = generate_fixtures(code)?;
 
         println!("Found fixtures: {}", fixtures.len());
         println!("Uploading service program...");
