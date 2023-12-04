@@ -20,21 +20,20 @@ fn extract_vec(wasm_code: Vec<u8>, fn_name: &str) -> gcli::result::Result<Vec<u8
     use wasmtime::*;
 
     let engine = Engine::default();
-    let module = Module::new(&engine, &wasm_code).unwrap();
+    let module = Module::new(&engine, &wasm_code)?;
 
     let mut store = Store::new(&engine, ());
 
     let mut linker = Linker::new(&engine);
 
-    let mem = Memory::new(&mut store, MemoryType::new(256, None)).unwrap();
+    let mem = Memory::new(&mut store, MemoryType::new(256, None))?;
 
     linker.func_wrap(
         "env",
         "alloc",
         move |mut caller: Caller<'_, ()>, pages: i32| -> i32 {
-            let prev_size = mem.size(&mut caller) as i32;
-            mem.grow(&mut caller, pages as u64).unwrap();
-            prev_size
+            mem.grow(&mut caller, pages as u64)
+                .expect("Failed to grow memory") as i32
         },
     )?;
 
@@ -50,7 +49,7 @@ fn extract_vec(wasm_code: Vec<u8>, fn_name: &str) -> gcli::result::Result<Vec<u8
 
     let call_func = instance.get_typed_func::<(), i64>(&mut store, fn_name)?;
 
-    let ptr_len = call_func.call(&mut store, ()).unwrap() as u64;
+    let ptr_len = call_func.call(&mut store, ())? as u64;
     let ptr = ((ptr_len & 0xffffffff00000000u64) >> 32) as usize;
     let len = (ptr_len & 0x00000000ffffffffu64) as usize;
 
