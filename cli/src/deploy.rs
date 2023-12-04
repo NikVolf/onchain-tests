@@ -15,7 +15,8 @@ pub struct Deploy {
     salt: String,
 }
 
-fn generate_fixtures(wasm_code: Vec<u8>) -> gcli::result::Result<Vec<Fixture>> {
+/// Extract name providing necessary imports for wasm instantiation.
+fn extract_vec(wasm_code: Vec<u8>, fn_name: &str) -> gcli::result::Result<Vec<u8>> {
     use wasmtime::*;
 
     let engine = Engine::default();
@@ -47,14 +48,19 @@ fn generate_fixtures(wasm_code: Vec<u8>) -> gcli::result::Result<Vec<Fixture>> {
 
     let instance = linker.instantiate(&mut store, &module)?;
 
-    let test_fn = instance.get_typed_func::<(), i64>(&mut store, "test")?;
+    let call_func = instance.get_typed_func::<(), i64>(&mut store, fn_name)?;
 
-    let ptr_len = test_fn.call(&mut store, ()).unwrap() as u64;
+    let ptr_len = call_func.call(&mut store, ()).unwrap() as u64;
     let ptr = ((ptr_len & 0xffffffff00000000u64) >> 32) as usize;
     let len = (ptr_len & 0x00000000ffffffffu64) as usize;
 
     let extracted_vec = mem.data(&mut store)[ptr..ptr + len].to_vec();
 
+    Ok(extracted_vec)
+}
+
+fn generate_fixtures(wasm_code: Vec<u8>) -> gcli::result::Result<Vec<Fixture>> {
+    let extracted_vec = extract_vec(wasm_code, "test")?;
     Ok(Vec::<Fixture>::decode(&mut &extracted_vec[..])?)
 }
 

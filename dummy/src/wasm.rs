@@ -29,9 +29,26 @@ extern "C" fn handle() {
     }
 }
 
-#[no_mangle]
-extern "C" fn test() -> u64 {
-    let fixtures = vec![Fixture {
+macro_rules! ext_vec {
+    ($func_name:ident, $expr: expr) => {
+        #[no_mangle]
+        pub extern "C" fn $func_name() -> u64 {
+            let data = $expr.into_boxed_slice();
+
+            let len = data.len();
+            let ptr = data.as_ptr();
+
+            let ret = ((ptr as u64) << 32) + (len as u64);
+
+            core::mem::forget(data);
+
+            ret
+        }
+    };
+}
+
+ext_vec!(test, {
+    vec![Fixture {
         description: StringIndex,
         preparation: vec![],
         expectations: vec![Expectation {
@@ -47,16 +64,5 @@ extern "C" fn test() -> u64 {
             },
             fail_hint: StringIndex,
         }],
-    }];
-
-    let fixtures_encoded = fixtures.encode().into_boxed_slice();
-
-    let len = fixtures_encoded.len();
-    let ptr = fixtures_encoded.as_ptr();
-
-    let ret = ((ptr as u64) << 32) + (len as u64);
-
-    core::mem::forget(fixtures_encoded);
-
-    ret
-}
+    }]
+});

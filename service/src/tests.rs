@@ -3,8 +3,8 @@ extern crate std;
 
 use self::gtest::{Log, Program, System};
 use crate::io::{Error, FailType, FailedFixture};
-use onchain_test_types::{Expectation, ExpectedMessage, Fixture, Message, StringIndex};
 use gstd::prelude::*;
+use onchain_test_types::{Expectation, ExpectedMessage, Fixture, Message, StringIndex};
 
 use crate::io;
 
