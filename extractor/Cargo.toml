@@ -11,6 +11,7 @@ repository.workspace = true
 parity-wasm = "0.45.0"
 anyhow = "*"
 wabt = "0.10"
+wasm-graph = "0.2"
 
 [patch.crates-io]
 parity-wasm = { version = "0.45.0", git = "https://github.com/gear-tech/parity-wasm", branch = "v0.45.0-sign-ext" }

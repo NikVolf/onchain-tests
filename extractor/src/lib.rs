@@ -39,13 +39,18 @@
 #[cfg(test)]
 mod tests;
 
+mod graph;
+
 use anyhow::Result;
-use parity_wasm::elements::Module;
+use parity_wasm::elements::{Deserialize, Module, Serialize};
 
 pub fn extract_from_bytes(bytes: &[u8]) -> Result<Vec<u8>> {
-    unimplemented!()
+    let module = parity_wasm::elements::Module::deserialize(&mut &bytes[..])?;
+    let mut data = Vec::new();
+    parity_wasm::elements::Module::serialize(extract(module)?, &mut data)?;
+    Ok(data)
 }
 
 pub fn extract(module: Module) -> Result<Module> {
-    unimplemented!()
+    graph::extract(module)
 }

@@ -33,7 +33,8 @@ fn assert_bytes(bytes: &[u8], expected: &[u8]) {
 
 #[test]
 fn simple() {
-    let original_bytes = bytes(r#"
+    let original_bytes = bytes(
+        r#"
         (module
             (import "env" "memory" (memory 1))
             (export "handle" (func $handle))
@@ -44,9 +45,11 @@ fn simple() {
                 drop
             )
         )
-    "#);
+    "#,
+    );
 
-    let expected_bytes = bytes(r#"
+    let expected_bytes = bytes(
+        r#"
         (module
             (import "env" "memory" (memory 1))
             (export "handle" (func $handle))
@@ -58,10 +61,10 @@ fn simple() {
                 drop
             )
         )
-    "#);
+    "#,
+    );
 
-    let actual_bytes = super::extract_from_bytes(&original_bytes[..])
-        .expect("Failed to extract");
+    let actual_bytes = super::extract_from_bytes(&original_bytes[..]).expect("Failed to extract");
 
     assert_bytes(&actual_bytes[..], &expected_bytes[..]);
 }
