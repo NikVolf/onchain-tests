@@ -16,45 +16,74 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context as _, Result};
 use wasm_graph::{EntryRef, ExportLocal, Func, ImportedOrDeclared, Instruction, Module};
 
-pub fn extract(module: parity_wasm::elements::Module) -> Result<parity_wasm::elements::Module> {
-    let mut module = Module::from_elements(&module).with_context(|| "Unable to parse module")?;
-    let test_funcs: Vec<EntryRef<Func>> = module
-        .exports
-        .iter()
-        .filter_map(|export| {
-            if export.name.starts_with("test_") {
-                match export.local {
-                    ExportLocal::Func(ref func_ref) => Some(func_ref.clone()),
-                    _ => None,
+struct Context {
+    module: Module,
+}
+
+impl Context {
+    pub fn new(module: Module) -> Self {
+        Self { module }
+    }
+
+    pub fn test_funcs(&self) -> Vec<EntryRef<Func>> {
+        self.module
+            .exports
+            .iter()
+            .filter_map(|export| {
+                if export.name.starts_with("test_") {
+                    match export.local {
+                        ExportLocal::Func(ref func_ref) => Some(func_ref.clone()),
+                        _ => None,
+                    }
+                } else {
+                    None
                 }
-            } else {
-                None
+            })
+            .collect()
+    }
+
+    pub fn data_end(&self) -> usize {
+        0
+    }
+
+    pub fn handle_impl(&self) -> Result<EntryRef<Func>> {
+        let handle_export = match self
+            .module
+            .exports
+            .iter()
+            .find(|export| &export.name == "handle")
+        {
+            Some(export) => export,
+            None => {
+                bail!("'handle' function is not exported, which is invalid");
             }
-        })
-        .collect();
+        };
 
-    let handle_export = match module
-        .exports
-        .iter()
-        .find(|export| &export.name == "handle")
+        let handle_local = match handle_export.local {
+            ExportLocal::Func(ref func_ref) => func_ref,
+            _ => bail!("'handle' export is of invalid type, expected function"),
+        };
+
+        Ok(handle_local.clone())
+    }
+
+    pub fn to_module(self) -> Module {
+        self.module
+    }
+}
+
+pub fn extract(module: parity_wasm::elements::Module) -> Result<parity_wasm::elements::Module> {
+    let module = Module::from_elements(&module).with_context(|| "Unable to parse module")?;
+    let context = Context::new(module);
+    let test_funcs = context.test_funcs();
+    let handle_impl = context.handle_impl()?;
+
     {
-        Some(export) => export,
-        None => {
-            bail!("'handle' function is not exported, which is invalid");
-        }
-    };
-
-    let handle_local = match handle_export.local {
-        ExportLocal::Func(ref func_ref) => func_ref,
-        _ => bail!("'handle' export is of invalid type, expected function"),
-    };
-
-    {
-        /// Block to end borrowing at the end
-        let mut handle_func = handle_local.write();
+        // Block to end borrowing at the end
+        let mut handle_func = handle_impl.write();
         match handle_func.origin {
             ImportedOrDeclared::Imported(..) => {
                 bail!("'handle' function declared as import, which is invalid");
@@ -69,6 +98,8 @@ pub fn extract(module: parity_wasm::elements::Module) -> Result<parity_wasm::ele
             }
         }
     }
+
+    let mut module = context.to_module();
 
     module
         .exports
