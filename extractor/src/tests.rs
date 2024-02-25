@@ -25,18 +25,19 @@ fn bytes(wat: &str) -> Vec<u8> {
 }
 
 fn assert_bytes(bytes: &[u8], expected: &[u8]) {
-    if bytes != expected {
-		println!("Error: wasms don't match!");
-        let actual_wat =
-		    wasmprinter::print_bytes(bytes).expect("Failed to convert result wasm to wat");
-        let expected_wat = wasmprinter::print_bytes(expected).expect("Failed to convert result wasm to wat");
-		for diff in diff::lines(&expected_wat, &actual_wat) {
-			match diff {
-				diff::Result::Left(l) => println!("-{}", l),
-				diff::Result::Both(l, _) => println!(" {}", l),
-				diff::Result::Right(r) => println!("+{}", r),
-			}
-		}
+    let actual_wat = wasmprinter::print_bytes(bytes).expect("Failed to convert actual wasm to wat");
+    let expected_wat =
+        wasmprinter::print_bytes(expected).expect("Failed to convert result wasm to wat");
+
+    if actual_wat != expected_wat {
+        println!("Error: wasms don't match!");
+        for diff in diff::lines(&expected_wat, &actual_wat) {
+            match diff {
+                diff::Result::Left(l) => println!("-{}", l),
+                diff::Result::Both(l, _) => println!(" {}", l),
+                diff::Result::Right(r) => println!("+{}", r),
+            }
+        }
 
         panic!()
     }
@@ -47,11 +48,12 @@ fn simple() {
     let original_bytes = bytes(
         r#"
         (module
+            (type (;0;) (func))
             (import "env" "memory" (memory 1))
-            (export "handle" (func $handle))
-            (export "test_some_test" (func $test_some_test))
-            (func $handle)
-            (func $test_some_test
+            (export "handle" (func 0))
+            (export "test_some_test" (func 1))
+            (func (;0;))
+            (func (;1;)
                 i32.const 0
                 drop
             )
@@ -62,16 +64,17 @@ fn simple() {
     let expected_bytes = bytes(
         r#"
         (module
-            (import "env" "memory" (memory 1))
-            (export "handle" (func $handle))
-            (func $handle
-                call $test_some_test
+            (type (;0;) (func))
+            (import "env" "memory" (memory (;0;) 1))
+            (func (;0;) (type 0)
+              call 1
             )
-            (func $test_some_test
-                i32.const 0
-                drop
+            (func (;1;) (type 0)
+              i32.const 0
+              drop
             )
-        )
+            (export "handle" (func 0))
+          )
     "#,
     );
 
