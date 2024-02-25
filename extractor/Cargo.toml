@@ -15,3 +15,7 @@ wasm-graph = "0.2"
 
 [patch.crates-io]
 parity-wasm = { version = "0.45.0", git = "https://github.com/gear-tech/parity-wasm", branch = "v0.45.0-sign-ext" }
+
+[dev-dependencies]
+diff = "0.1"
+wasmprinter = "0.200"

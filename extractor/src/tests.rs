@@ -26,8 +26,19 @@ fn bytes(wat: &str) -> Vec<u8> {
 
 fn assert_bytes(bytes: &[u8], expected: &[u8]) {
     if bytes != expected {
-        // TODO: show wat & diff
-        panic!("Bytes not equal!")
+		println!("Error: wasms don't match!");
+        let actual_wat =
+		    wasmprinter::print_bytes(bytes).expect("Failed to convert result wasm to wat");
+        let expected_wat = wasmprinter::print_bytes(expected).expect("Failed to convert result wasm to wat");
+		for diff in diff::lines(&expected_wat, &actual_wat) {
+			match diff {
+				diff::Result::Left(l) => println!("-{}", l),
+				diff::Result::Both(l, _) => println!(" {}", l),
+				diff::Result::Right(r) => println!("+{}", r),
+			}
+		}
+
+        panic!()
     }
 }
 
