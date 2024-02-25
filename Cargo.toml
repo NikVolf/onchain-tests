@@ -12,5 +12,6 @@ members = [
     "service",
     "cli",
     "dummy",
-    "service/types"
+    "service/types",
+    "extractor"
 ]

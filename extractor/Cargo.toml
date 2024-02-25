@@ -1,0 +1,15 @@
+[package]
+name = "wasm-test-extractor"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+parity-wasm = "0.45.0"
+anyhow = "*"
+
+[patch.crates-io]
+parity-wasm = { version = "0.45.0", git = "https://github.com/gear-tech/parity-wasm", branch = "v0.45.0-sign-ext" }
