@@ -36,6 +36,9 @@
 //!
 //! Note that original "... some code ..." is removed
 
+#[cfg(test)]
+mod tests;
+
 use anyhow::Result;
 use parity_wasm::elements::Module;
 
