@@ -16,8 +16,31 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use anyhow::Result;
+use anyhow::{anyhow, Context, Result};
+use wasm_graph::{ExportLocal, Module};
 
 pub fn extract(module: parity_wasm::elements::Module) -> Result<parity_wasm::elements::Module> {
-    unimplemented!();
+    let mut module = Module::from_elements(&module).with_context(|| "Unable to parse module")?;
+    let test_indices: Vec<usize> = module
+        .exports
+        .iter()
+        .filter_map(|export| {
+            if export.name.starts_with("test_") {
+                match export.local {
+                    ExportLocal::Func(ref func_ref) => func_ref.read().order(),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    module
+        .exports
+        .retain(|export| !export.name.starts_with("test_"));
+
+    let result = module.generate()?;
+
+    Ok(result)
 }
