@@ -8,7 +8,6 @@ repository.workspace = true
 
 [dependencies]
 gstd = { git = "https://github.com/gear-tech/gear.git"}
-onchain-test-types = { path = "../service/types" }
 codec = { package = "parity-scale-codec", version = "3.4.0", default-features = false, features = ["derive"] }
 
 [build-dependencies]

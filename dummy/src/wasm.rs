@@ -18,7 +18,6 @@
 
 use codec::Encode;
 use gstd::{msg, prelude::*};
-use onchain_test_types::{Expectation, ExpectedMessage, Fixture, Message, StringIndex};
 
 #[no_mangle]
 extern "C" fn handle() {
@@ -28,41 +27,3 @@ extern "C" fn handle() {
         msg::reply_bytes("PONG", 0).expect("Failed to send reply");
     }
 }
-
-macro_rules! ext_vec {
-    ($func_name:ident, $expr: expr) => {
-        #[no_mangle]
-        pub extern "C" fn $func_name() -> u64 {
-            let data = $expr.into_boxed_slice();
-
-            let len = data.len();
-            let ptr = data.as_ptr();
-
-            let ret = ((ptr as u64) << 32) + (len as u64);
-
-            core::mem::forget(data);
-
-            ret
-        }
-    };
-}
-
-ext_vec!(test, {
-    vec![Fixture {
-        description: StringIndex,
-        preparation: vec![],
-        expectations: vec![Expectation {
-            request: Message {
-                gas: 1_000_000_000,
-                value: 0,
-                payload: b"PING".to_vec(),
-            },
-            response: ExpectedMessage {
-                at_least_gas: None,
-                value: Some(0),
-                payload: Some(b"PONG".to_vec()),
-            },
-            fail_hint: StringIndex,
-        }],
-    }]
-});
