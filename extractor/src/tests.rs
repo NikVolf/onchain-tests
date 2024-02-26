@@ -51,6 +51,7 @@ fn simple() {
             (type (;0;) (func))
             (import "env" "memory" (memory 1))
             (export "handle" (func 0))
+            (export "run_tests" (func 3))
             (export "test_some_test" (func 1))
             (export "test_another_test" (func 2))
             (func (;0;))
@@ -60,6 +61,10 @@ fn simple() {
             )
             (func (;2;)
                 i32.const 2
+                drop
+            )
+            (func (;3;)
+                i32.const 4
                 drop
             )
         )

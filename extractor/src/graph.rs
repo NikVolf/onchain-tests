@@ -75,7 +75,7 @@ impl Context {
             mem_mut.limits.maximum(),
         );
 
-        mem.write().limits = new_limits;
+        mem_mut.limits = new_limits;
 
         Ok(ptr)
     }
@@ -84,50 +84,65 @@ impl Context {
     ///
     /// Inside the program, this should accessible as (len, $[*const fn()])
     /// Returns pointer where the data is located
-    pub fn store_funcs(&mut self, funcs: &[EntryRef<Func>]) -> Result<u32> {
+    pub fn store_funcs(&mut self, funcs: &[EntryRef<Func>]) -> Result<i32> {
         let data_len = funcs.len() * 4 + 4;
         let ptr = self.allocate(data_len)?; // extra 4 bytes to strore number of functions
         let mut data = Vec::with_capacity(data_len);
-        data[0..4].copy_from_slice(&funcs.len().to_le_bytes());
+        data.extend(funcs.len().to_le_bytes());
         for idx in 0..funcs.len() {
-            data[(idx + 1) * 4..(idx + 2) * 4].copy_from_slice(
-                &funcs[idx]
+            data.extend(
+                (funcs[idx]
                     .read()
                     .order()
-                    .expect("Trying to use detached func!")
+                    .expect("Trying to use detached func!") as u32)
                     .to_le_bytes(),
             )
         }
         let new_data_segment = DataSegment {
-            location: SegmentLocation::Default(vec![Instruction::Plain(
-                parity_wasm::elements::Instruction::I32Const(ptr as i32),
-            )]),
+            location: SegmentLocation::Default(vec![
+                Instruction::Plain(parity_wasm::elements::Instruction::I32Const(ptr as i32)),
+                Instruction::Plain(parity_wasm::elements::Instruction::End),
+            ]),
             value: data,
         };
         self.module.data.push(new_data_segment);
 
-        Ok(ptr)
+        Ok(ptr as i32)
     }
 
-    pub fn handle_impl(&self) -> Result<EntryRef<Func>> {
-        let handle_export = match self
+    fn get_exported_impl(&self, export_name: &str) -> Result<EntryRef<Func>> {
+        let export = match self
             .module
             .exports
             .iter()
-            .find(|export| &export.name == "handle")
+            .find(|export| &export.name == export_name)
         {
             Some(export) => export,
             None => {
-                bail!("'handle' function is not exported, which is invalid");
+                bail!(
+                    "'{0}' function is not exported, which is invalid",
+                    export_name
+                );
             }
         };
 
-        let handle_local = match handle_export.local {
+        let local_impl = match export.local {
             ExportLocal::Func(ref func_ref) => func_ref,
-            _ => bail!("'handle' export is of invalid type, expected function"),
+            _ => bail!(
+                "'{0}' export is of invalid type, expected function",
+                export_name
+            ),
         };
 
-        Ok(handle_local.clone())
+        Ok(local_impl.clone())
+    }
+
+    pub fn run_tests_impl(&self) -> Result<EntryRef<Func>> {
+        self.get_exported_impl("run_tests")
+    }
+
+    pub fn handle_impl(&self) -> Result<EntryRef<Func>> {
+        self.get_exported_impl("handle")
     }
 
     pub fn to_module(self) -> Module {
@@ -137,9 +152,13 @@ impl Context {
 
 pub fn extract(module: parity_wasm::elements::Module) -> Result<parity_wasm::elements::Module> {
     let module = Module::from_elements(&module).with_context(|| "Unable to parse module")?;
-    let context = Context::new(module);
+    let mut context = Context::new(module);
+
     let test_funcs = context.test_funcs();
     let handle_impl = context.handle_impl()?;
+    let run_tests_impl = context.run_tests_impl()?;
+
+    let i32_ptr = context.store_funcs(&test_funcs[..])?;
 
     {
         // Block to end borrowing at the end
@@ -150,11 +169,10 @@ pub fn extract(module: parity_wasm::elements::Module) -> Result<parity_wasm::ele
             }
             ImportedOrDeclared::Declared(ref mut body) => {
                 body.locals.clear();
-                body.code.clear();
-
-                for test_entry in test_funcs.iter() {
-                    body.code.push(Instruction::Call(test_entry.clone()))
-                }
+                body.code = vec![
+                    Instruction::Plain(parity_wasm::elements::Instruction::I32Const(i32_ptr)),
+                    Instruction::Call(run_tests_impl.clone()),
+                ];
             }
         }
     }
@@ -163,7 +181,7 @@ pub fn extract(module: parity_wasm::elements::Module) -> Result<parity_wasm::ele
 
     module
         .exports
-        .retain(|export| !export.name.starts_with("test_"));
+        .retain(|export| !(export.name.starts_with("test_") || export.name == "run_tests"));
 
     let result = module.generate()?;
 
