@@ -49,6 +49,7 @@ fn simple() {
         r#"
         (module
             (type (;0;) (func))
+            (type (;1;) (func (param i32)))
             (import "env" "memory" (memory 1))
             (export "handle" (func 0))
             (export "run_tests" (func 3))
@@ -63,7 +64,7 @@ fn simple() {
                 i32.const 2
                 drop
             )
-            (func (;3;)
+            (func (type 1) (;3;)
                 i32.const 4
                 drop
             )
@@ -75,10 +76,11 @@ fn simple() {
         r#"
         (module
             (type (;0;) (func))
-            (import "env" "memory" (memory (;0;) 1))
+            (type (;1;) (func (param i32)))
+            (import "env" "memory" (memory (;0;) 2))
             (func (;0;) (type 0)
-              call 1
-              call 2
+              i32.const 65536
+              call 3
             )
             (func (;1;) (type 0)
               i32.const 0
@@ -88,7 +90,12 @@ fn simple() {
               i32.const 2
               drop
             )
+            (func (type 1) (;3;)
+                i32.const 4
+                drop 
+            )
             (export "handle" (func 0))
+            (data (;0;) (i32.const 65536) "\02\00\00\00\00\00\00\00\01\00\00\00\02\00\00\00")
           )
     "#,
     );
