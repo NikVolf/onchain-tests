@@ -17,7 +17,10 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use anyhow::{bail, Context as _, Result};
-use wasm_graph::{EntryRef, ExportLocal, Func, ImportedOrDeclared, Instruction, Module, Memory};
+use wasm_graph::{
+    DataSegment, EntryRef, ExportLocal, Func, ImportedOrDeclared, Instruction, Memory, Module,
+    SegmentLocation,
+};
 
 struct Context {
     module: Module,
@@ -47,14 +50,18 @@ impl Context {
 
     pub fn default_memory(&self) -> Result<EntryRef<Memory>> {
         match self.module.memory.get(0) {
-            None => { bail!("Default memory not found in the module"); }
+            None => {
+                bail!("Default memory not found in the module");
+            }
             Some(mem) => Ok(mem),
         }
     }
 
     /// Returns pointer to the free space
     pub fn allocate(&self, size: usize) -> Result<u32> {
-        if size == 0 { bail!("Cannot allocate zero bytes"); }
+        if size == 0 {
+            bail!("Cannot allocate zero bytes");
+        }
 
         // Extending the memory
         let mem = self.default_memory()?;
@@ -69,6 +76,35 @@ impl Context {
         );
 
         mem.write().limits = new_limits;
+
+        Ok(ptr)
+    }
+
+    /// Append function pointers, allocating new data segment
+    ///
+    /// Inside the program, this should accessible as (len, $[*const fn()])
+    /// Returns pointer where the data is located
+    pub fn store_funcs(&mut self, funcs: &[EntryRef<Func>]) -> Result<u32> {
+        let data_len = funcs.len() * 4 + 4;
+        let ptr = self.allocate(data_len)?; // extra 4 bytes to strore number of functions
+        let mut data = Vec::with_capacity(data_len);
+        data[0..4].copy_from_slice(&funcs.len().to_le_bytes());
+        for idx in 0..funcs.len() {
+            data[(idx + 1) * 4..(idx + 2) * 4].copy_from_slice(
+                &funcs[idx]
+                    .read()
+                    .order()
+                    .expect("Trying to use detached func!")
+                    .to_le_bytes(),
+            )
+        }
+        let new_data_segment = DataSegment {
+            location: SegmentLocation::Default(vec![Instruction::Plain(
+                parity_wasm::elements::Instruction::I32Const(ptr as i32),
+            )]),
+            value: data,
+        };
+        self.module.data.push(new_data_segment);
 
         Ok(ptr)
     }
