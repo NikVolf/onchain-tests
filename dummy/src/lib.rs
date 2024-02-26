@@ -28,3 +28,14 @@ pub use code::WASM_BINARY_OPT as WASM_BINARY;
 
 #[cfg(not(feature = "std"))]
 mod wasm;
+
+/* TODO: implement later
+pub enum ControlSignalType {
+    /// Enumerate
+    Enumerate,
+    /// Run specific test (for multi-core run)
+    RunOne(u32),
+    /// Run all tests (for sequential run by single runner)
+    Run,
+}
+*/

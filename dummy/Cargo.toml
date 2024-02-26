@@ -9,6 +9,7 @@ repository.workspace = true
 [dependencies]
 gstd = { git = "https://github.com/gear-tech/gear.git"}
 codec = { package = "parity-scale-codec", version = "3.4.0", default-features = false, features = ["derive"] }
+futures = { version = "0.3", default-features = false, features = ["alloc"] }
 
 [build-dependencies]
 gear-wasm-builder = { git = "https://github.com/gear-tech/gear.git"}
