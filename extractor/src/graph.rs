@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use anyhow::{bail, Context as _, Result};
-use wasm_graph::{EntryRef, ExportLocal, Func, ImportedOrDeclared, Instruction, Module};
+use wasm_graph::{EntryRef, ExportLocal, Func, ImportedOrDeclared, Instruction, Module, Memory};
 
 struct Context {
     module: Module,
@@ -45,8 +45,32 @@ impl Context {
             .collect()
     }
 
-    pub fn data_end(&self) -> usize {
-        0
+    pub fn default_memory(&self) -> Result<EntryRef<Memory>> {
+        match self.module.memory.get(0) {
+            None => { bail!("Default memory not found in the module"); }
+            Some(mem) => Ok(mem),
+        }
+    }
+
+    /// Returns pointer to the free space
+    pub fn allocate(&self, size: usize) -> Result<u32> {
+        if size == 0 { bail!("Cannot allocate zero bytes"); }
+
+        // Extending the memory
+        let mem = self.default_memory()?;
+        let mut mem_mut = mem.write();
+
+        let extra_pages = (size / 65536) + 1;
+        let ptr = mem_mut.limits.initial() * 65536;
+
+        let new_limits = parity_wasm::elements::ResizableLimits::new(
+            mem_mut.limits.initial() + (extra_pages as u32),
+            mem_mut.limits.maximum(),
+        );
+
+        mem.write().limits = new_limits;
+
+        Ok(ptr)
     }
 
     pub fn handle_impl(&self) -> Result<EntryRef<Func>> {
