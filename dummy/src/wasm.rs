@@ -17,9 +17,16 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::{Decode, Encode};
-use core::{future::Future, pin::Pin};
-use futures::FutureExt;
-use gstd::{msg, prelude::*};
+use core::{
+    future::Future,
+    pin::Pin,
+    task::{Context, Waker},
+};
+use futures::{
+    stream::{FuturesUnordered, StreamExt},
+    FutureExt,
+};
+use gstd::{msg, prelude::*, MessageId};
 
 #[derive(Debug, codec::Decode)]
 pub struct ControlSignal {
@@ -57,7 +64,7 @@ impl TestContext {
     }
 
     fn send_progress(&self, msg: ProgressSignal) {
-        msg::send(self.deployed_actor, msg, 0);
+        let _ = msg::send(self.deployed_actor, msg, 0);
     }
 
     fn test_start(&self, name: &str) {
@@ -69,10 +76,8 @@ impl TestContext {
     }
 }
 
-type PinnedFuture = Pin<Box<dyn Future<Output = ()> + 'static>>;
-
 // thread-local-like variable for run_tests workflow (synchronously populating one big future)
-static mut CONTEXT_FUTURES: Vec<PinnedFuture> = Vec::new();
+static mut CONTEXT_FUTURES: Vec<Pin<Box<dyn Future<Output = ()> + 'static>>> = Vec::new();
 
 pub unsafe extern "C" fn test_smoky() {
     let test_future = async {
@@ -95,13 +100,40 @@ pub unsafe extern "C" fn test_smoky() {
     }
 }
 
+unsafe fn read_tests(mut ptr: *const u8) -> Vec<unsafe extern "C" fn()> {
+    let mut buf = [0u8; 4];
+    buf.clone_from_slice(slice::from_raw_parts(ptr, 4));
+    let len = u32::from_le_bytes(buf);
+
+    let mut result: Vec<unsafe extern "C" fn()> = Vec::new();
+
+    for idx in 0..len {
+        ptr = ptr.offset(4);
+        buf.clone_from_slice(slice::from_raw_parts(ptr, 4));
+
+        let u32_ptr = u32::from_le_bytes(buf);
+
+        result.push(core::mem::transmute(u32_ptr));
+    }
+
+    result
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn run_tests(ptr: *const u8) {
     // at the moment, just runs all tests
 
-    // invoke all declared tests..
+    gstd::message_loop(async move {
+        // invoke all declared tests..
+        let tests = read_tests(ptr);
+        for test in tests {
+            test();
+        }
 
-    // drain message to local var and create FuturesUnordered
+        // drain message to local var and create FuturesUnordered
+        let mut stream = FuturesUnordered::new();
+        stream.extend(core::mem::replace(&mut CONTEXT_FUTURES, Vec::new()));
 
-    // run message loop based on what we produced
+        while let Some(next_test) = stream.next().await {}
+    });
 }
