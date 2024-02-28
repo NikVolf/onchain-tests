@@ -16,17 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use codec::{Decode, Encode};
-use core::{
-    future::Future,
-    pin::Pin,
-    task::{Context, Waker},
-};
+use core::{future::Future, pin::Pin};
 use futures::{
     stream::{FuturesUnordered, StreamExt},
     FutureExt,
 };
-use gstd::{msg, prelude::*, MessageId};
+use gstd::{msg, prelude::*};
 
 #[derive(Debug, codec::Decode)]
 pub struct ControlSignal {
@@ -64,7 +59,7 @@ impl TestContext {
     }
 
     fn send_progress(&self, msg: ProgressSignal) {
-        let _ = msg::send(self.deployed_actor, msg, 0);
+        let _ = msg::send(self.control_bus, msg, 0);
     }
 
     fn test_start(&self, name: &str) {
@@ -79,6 +74,7 @@ impl TestContext {
 // thread-local-like variable for run_tests workflow (synchronously populating one big future)
 static mut CONTEXT_FUTURES: Vec<Pin<Box<dyn Future<Output = ()> + 'static>>> = Vec::new();
 
+#[no_mangle]
 pub unsafe extern "C" fn test_smoky() {
     let test_future = async {
         // test preamble
@@ -107,7 +103,7 @@ unsafe fn read_tests(mut ptr: *const u8) -> Vec<unsafe extern "C" fn()> {
 
     let mut result: Vec<unsafe extern "C" fn()> = Vec::new();
 
-    for idx in 0..len {
+    for _ in 0..len {
         ptr = ptr.offset(4);
         buf.clone_from_slice(slice::from_raw_parts(ptr, 4));
 
@@ -134,6 +130,6 @@ pub unsafe extern "C" fn run_tests(ptr: *const u8) {
         let mut stream = FuturesUnordered::new();
         stream.extend(core::mem::replace(&mut CONTEXT_FUTURES, Vec::new()));
 
-        while let Some(next_test) = stream.next().await {}
+        while let Some(_) = stream.next().await {}
     });
 }

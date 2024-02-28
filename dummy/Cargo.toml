@@ -15,7 +15,8 @@ hashbrown = "*"
 [build-dependencies]
 gear-wasm-builder = { git = "https://github.com/gear-tech/gear.git"}
 anyhow = "*"
-pwasm-utils = "0.19.0"
+pwasm-utils = { git = "http://github.com/nikvolf/wasm-utils" }
+wasm-test-extractor = { path = "../extractor" }
 
 [features]
 debug = ["gstd/debug"]
