@@ -18,8 +18,8 @@
 
 use anyhow::{bail, Context as _, Result};
 use wasm_graph::{
-    DataSegment, EntryRef, ExportLocal, Func, ImportedOrDeclared, Instruction, Memory, Module,
-    SegmentLocation,
+    DataSegment, ElementSegment, EntryRef, ExportLocal, Func, ImportedOrDeclared, Instruction,
+    Memory, Module, SegmentLocation, Table,
 };
 
 struct Context {
@@ -57,6 +57,45 @@ impl Context {
         }
     }
 
+    pub fn default_table(&self) -> Result<EntryRef<Table>> {
+        match self.module.tables.get(0) {
+            None => {
+                bail!("Default table not found in the module");
+            }
+            Some(mem) => Ok(mem),
+        }
+    }
+
+    pub fn extend_default_table(&self, amount: u32) -> Result<u32> {
+        let table = self.default_table()?;
+        let mut table_mut = table.write();
+
+        let original = table_mut.limits.initial();
+
+        let new_limits = parity_wasm::elements::ResizableLimits::new(
+            table_mut.limits.initial() + amount,
+            table_mut
+                .limits
+                .maximum()
+                .and_then(|max| Some(max + amount)),
+        );
+
+        table_mut.limits = new_limits;
+
+        Ok(original)
+    }
+
+    pub fn store_funcs(&mut self, at: u32, funcs: &[EntryRef<Func>]) {
+        let new_element_segment = ElementSegment {
+            location: SegmentLocation::Default(vec![
+                Instruction::Plain(parity_wasm::elements::Instruction::I32Const(at as i32)),
+                Instruction::Plain(parity_wasm::elements::Instruction::End),
+            ]),
+            value: funcs.iter().cloned().collect(),
+        };
+        self.module.elements.push(new_element_segment);
+    }
+
     /// Returns pointer to the free space
     pub fn allocate(&self, size: usize) -> Result<u32> {
         if size == 0 {
@@ -82,21 +121,19 @@ impl Context {
 
     /// Append function pointers, allocating new data segment
     ///
-    /// Inside the program, this should accessible as (len, $[*const fn()])
+    /// Inside the program, this should accessible as (len, &[*const unsafe extern "C" fn()])
     /// Returns pointer where the data is located
-    pub fn store_funcs(&mut self, funcs: &[EntryRef<Func>]) -> Result<i32> {
-        let data_len = funcs.len() * 4 + 4;
-        let ptr = self.allocate(data_len)?; // extra 4 bytes to strore number of functions
+    pub fn store_func_ptrs(&mut self, funcs: &[EntryRef<Func>]) -> Result<i32> {
+        // Store funcs in the table extension
+        let fn_ptr_start = self.extend_default_table(funcs.len() as u32)?;
+        self.store_funcs(fn_ptr_start, funcs);
+
+        let data_len = (funcs.len() + 1) * 4; // extra 4 bytes to strore number of functions
+        let ptr = self.allocate(data_len)?;
         let mut data = Vec::with_capacity(data_len);
         data.extend(funcs.len().to_le_bytes());
-        for idx in 0..funcs.len() {
-            data.extend(
-                (funcs[idx]
-                    .read()
-                    .order()
-                    .expect("Trying to use detached func!") as u32)
-                    .to_le_bytes(),
-            )
+        for idx in 0..(funcs.len() as u32) {
+            data.extend((idx + fn_ptr_start).to_le_bytes());
         }
         let new_data_segment = DataSegment {
             location: SegmentLocation::Default(vec![
@@ -158,7 +195,7 @@ pub fn extract(module: parity_wasm::elements::Module) -> Result<parity_wasm::ele
     let handle_impl = context.handle_impl()?;
     let run_tests_impl = context.run_tests_impl()?;
 
-    let i32_ptr = context.store_funcs(&test_funcs[..])?;
+    let i32_ptr = context.store_func_ptrs(&test_funcs[..])?;
 
     {
         // Block to end borrowing at the end

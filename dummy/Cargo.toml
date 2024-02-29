@@ -13,7 +13,8 @@ futures = { version = "0.3", default-features = false, features = ["alloc"] }
 hashbrown = "*"
 
 [build-dependencies]
-gear-wasm-builder = { git = "https://github.com/gear-tech/gear.git", branch = "nv-optimize-always" }
+gear-wasm-builder = { git = "https://github.com/gear-tech/gear.git" }
+gear-core = { git = "https://github.com/gear-tech/gear.git" }
 anyhow = "*"
 pwasm-utils = { git = "http://github.com/nikvolf/wasm-utils", features = ["sign_ext"] }
 wasm-test-extractor = { path = "../extractor" }

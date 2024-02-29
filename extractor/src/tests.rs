@@ -51,10 +51,12 @@ fn simple() {
             (type (;0;) (func))
             (type (;1;) (func (param i32)))
             (import "env" "memory" (memory 1))
+            (table 1 1 funcref)
             (export "handle" (func 0))
             (export "run_tests" (func 3))
             (export "test_some_test" (func 1))
             (export "test_another_test" (func 2))
+            (elem (i32.const 0) func 0)
             (func (;0;))
             (func (;1;)
                 i32.const 0
@@ -92,9 +94,12 @@ fn simple() {
             )
             (func (type 1) (;3;)
                 i32.const 4
-                drop 
+                drop
             )
+            (table (;0;) 3 3 funcref)
             (export "handle" (func 0))
+            (elem (;0;) (i32.const 0) func 0)
+            (elem (;1;) (i32.const 1) func 1 2)
             (data (;0;) (i32.const 65536) "\02\00\00\00\00\00\00\00\01\00\00\00\02\00\00\00")
           )
     "#,
