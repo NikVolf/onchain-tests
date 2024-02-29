@@ -21,7 +21,7 @@ use futures::{
     stream::{FuturesUnordered, StreamExt},
     FutureExt,
 };
-use gstd::{msg, prelude::*};
+use gstd::{msg, prelude::*, ActorId};
 
 #[derive(Debug, codec::Decode)]
 pub struct ControlSignal {
@@ -69,6 +69,10 @@ impl TestContext {
     fn test_success(&self, name: &str) {
         self.send_progress(ProgressSignal::TestSuccess(name.to_string()))
     }
+
+    fn testee(&self) -> &ActorId {
+        &self.deployed_actor
+    }
 }
 
 // thread-local-like variable for run_tests workflow (synchronously populating one big future)
@@ -83,7 +87,13 @@ pub unsafe extern "C" fn test_smoky() {
 
         // test body
         {
-            assert!(1 == 1);
+            assert_eq!(
+                msg::send_bytes_for_reply(context.testee().clone(), b"PING", 0, 0)
+                    .expect("failed to send")
+                    .await
+                    .expect("Failed to handle simple PING!"),
+                b"PONG",
+            );
         }
 
         // test epilogue

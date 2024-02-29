@@ -172,6 +172,7 @@ pub fn extract(module: parity_wasm::elements::Module) -> Result<parity_wasm::ele
                 body.code = vec![
                     Instruction::Plain(parity_wasm::elements::Instruction::I32Const(i32_ptr)),
                     Instruction::Call(run_tests_impl.clone()),
+                    Instruction::Plain(parity_wasm::elements::Instruction::End),
                 ];
             }
         }

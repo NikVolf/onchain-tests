@@ -23,11 +23,16 @@ use std::path::PathBuf;
 struct TestBinaryPreProcessor;
 
 impl gear_wasm_builder::PreProcessor for TestBinaryPreProcessor {
-    fn pre_process(&self, path: PathBuf) -> Result<gear_wasm_builder::PreProcessOutput> {
+
+    fn name(&self) -> &'static str {
+        "test"
+    }
+
+    fn pre_process(&self, path: PathBuf) -> Result<Vec<(String, Vec<u8>)>> {
         let contents = std::fs::read(&path).context("Failed to read file by optimizer")?;
 
-        let module = pwasm_utils::parity_wasm::deserialize_buffer(&contents).map_err(|_| {
-            anyhow::anyhow!("Deserialization error for wasm file {0}!", path.display())
+        let module = pwasm_utils::parity_wasm::deserialize_buffer(&contents).map_err(|e| {
+            anyhow::anyhow!("Deserialization error for wasm file {0}: {e}!", path.display())
         })?;
 
         let mut module = wasm_test_extractor::extract(module)?;
@@ -41,15 +46,13 @@ impl gear_wasm_builder::PreProcessor for TestBinaryPreProcessor {
         let mut code = vec![];
         module.serialize(&mut code)?;
 
-        Ok(gear_wasm_builder::PreProcessOutput {
-            content: code,
-            path: "dummy-wasm.test.wasm".into(),
-        })
+        Ok(vec![("test.wasm".into(), code)])
     }
 }
 
 fn main() {
     gear_wasm_builder::WasmBuilder::new()
+        .with_pre_processor(Box::new(TestBinaryPreProcessor))
         .exclude_features(vec!["std"])
         .build();
 }
