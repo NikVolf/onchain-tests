@@ -34,8 +34,8 @@ pub enum ProgressSignal {
     TestSuccess(String),
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle() {
+#[gstd::async_main]
+async fn main() {
     let payload = msg::load_bytes().expect("Failed to load payload");
 
     if payload == b"PING" {
