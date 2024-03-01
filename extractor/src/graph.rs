@@ -131,10 +131,11 @@ impl Context {
         let data_len = (funcs.len() + 1) * 4; // extra 4 bytes to strore number of functions
         let ptr = self.allocate(data_len)?;
         let mut data = Vec::with_capacity(data_len);
-        data.extend(funcs.len().to_le_bytes());
+        data.extend((funcs.len() as u32).to_le_bytes());
         for idx in 0..(funcs.len() as u32) {
             data.extend((idx + fn_ptr_start).to_le_bytes());
         }
+
         let new_data_segment = DataSegment {
             location: SegmentLocation::Default(vec![
                 Instruction::Plain(parity_wasm::elements::Instruction::I32Const(ptr as i32)),

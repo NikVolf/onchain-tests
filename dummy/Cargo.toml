@@ -19,6 +19,9 @@ anyhow = "*"
 pwasm-utils = { git = "http://github.com/nikvolf/wasm-utils", features = ["sign_ext"] }
 wasm-test-extractor = { path = "../extractor" }
 
+[dev-dependencies]
+gtest = { git = "https://github.com/gear-tech/gear.git"}
+
 [features]
 debug = ["gstd/debug"]
 default = ["std"]

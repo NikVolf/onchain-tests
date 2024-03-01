@@ -29,13 +29,47 @@ pub use code::WASM_BINARY_OPT as WASM_BINARY;
 #[cfg(not(feature = "std"))]
 mod wasm;
 
-/* TODO: implement later
-pub enum ControlSignalType {
-    /// Enumerate
-    Enumerate,
-    /// Run specific test (for multi-core run)
-    RunOne(u32),
-    /// Run all tests (for sequential run by single runner)
-    Run,
+#[derive(Debug, codec::Decode, codec::Encode)]
+pub struct ControlSignal {
+    pub deployed_actor: gstd::ActorId,
 }
-*/
+
+#[cfg(test)]
+mod tests {
+    extern crate std;
+
+    use super::ControlSignal;
+    use gtest::{Program, System};
+
+    #[test]
+    fn program_can_be_initialized() {
+        let system = System::new();
+        system.init_logger();
+
+        // test_program
+        let test_program = Program::from_file(
+            &system,
+            "../target/wasm32-unknown-unknown/debug/dummy_wasm_test.opt.wasm",
+        );
+        let res = test_program.send_bytes(0, b"dummy");
+        assert!(!res.main_failed());
+
+        // actual program
+        let prog = Program::from_file(
+            &system,
+            "../target/wasm32-unknown-unknown/debug/dummy_wasm.opt.wasm",
+        );
+        let res = prog.send_bytes(0, b"init here");
+        assert!(!res.main_failed());
+
+        // actual testing
+
+        let res = test_program.send(
+            0,
+            ControlSignal {
+                deployed_actor: prog.id().into_bytes().into(),
+            },
+        );
+        assert!(!res.main_failed());
+    }
+}
