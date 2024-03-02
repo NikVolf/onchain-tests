@@ -1,0 +1,14 @@
+[package]
+name = "gear-ext-builder"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+gear-wasm-builder = { git = "https://github.com/gear-tech/gear.git" }
+gear-core = { git = "https://github.com/gear-tech/gear.git" }
+anyhow = "*"
+pwasm-utils = { git = "http://github.com/nikvolf/wasm-utils", features = ["sign_ext"] }
+wasm-test-extractor = { path = "../extractor" }

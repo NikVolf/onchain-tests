@@ -13,4 +13,5 @@ members = [
     "extractor",
     "test-runtime",
     "test-runtime/codegen",
+    "test-builder"
 ]
