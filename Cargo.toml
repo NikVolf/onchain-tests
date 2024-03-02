@@ -9,7 +9,7 @@ repository = "https://github.com/NikVolf/onchain-tests"
 resolver = "2"
 
 members = [
-    "dummy",
+    "example",
     "extractor",
     "test-runtime",
     "test-runtime/codegen",

@@ -46,6 +46,13 @@ impl gear_wasm_builder::PreProcessor for TestBinaryPreProcessor {
     fn pre_process(&self, path: PathBuf) -> Result<Vec<(PreProcessorTarget, Vec<u8>)>> {
         let contents = std::fs::read(&path).context("Failed to read file by optimizer")?;
 
+        let file_name = path
+            .file_name()
+            .expect("Path expected to be an actual file")
+            .to_str()
+            .expect("Filename expected to be convertable to utf-8")
+            .to_string();
+
         let original_module =
             pwasm_utils::parity_wasm::deserialize_buffer(&contents).map_err(|e| {
                 anyhow::anyhow!(
@@ -62,10 +69,7 @@ impl gear_wasm_builder::PreProcessor for TestBinaryPreProcessor {
 
         Ok(vec![
             (PreProcessorTarget::Default, original_code),
-            (
-                PreProcessorTarget::Named("dummy_wasm.wasm".into()),
-                code_with_test_runner,
-            ),
+            (PreProcessorTarget::Named(file_name), code_with_test_runner),
         ])
     }
 }

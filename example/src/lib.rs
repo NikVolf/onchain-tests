@@ -44,7 +44,7 @@ mod tests {
         // test_program
         let test_program = Program::from_file(
             &system,
-            "../target/wasm32-unknown-unknown/debug/dummy_wasm_test.opt.wasm",
+            "../target/wasm32-unknown-unknown/debug/example_test.opt.wasm",
         );
         let res = test_program.send_bytes(0, b"dummy");
         assert!(!res.main_failed());
@@ -52,7 +52,7 @@ mod tests {
         // actual program
         let prog = Program::from_file(
             &system,
-            "../target/wasm32-unknown-unknown/debug/dummy_wasm.opt.wasm",
+            "../target/wasm32-unknown-unknown/debug/example.opt.wasm",
         );
         let res = prog.send_bytes(0, b"init here");
         assert!(!res.main_failed());
