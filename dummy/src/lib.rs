@@ -57,14 +57,8 @@ mod tests {
         let res = prog.send_bytes(0, b"init here");
         assert!(!res.main_failed());
 
-        // actual testing
-
-        let res = test_program.send(
-            0,
-            ControlSignal {
-                deployed_actor: prog.id().into_bytes().into(),
-            },
-        );
+        // actual test run
+        let res = test_program.send(0, ControlSignal::Test(prog.id().into_bytes().into()));
         assert!(!res.main_failed());
     }
 }

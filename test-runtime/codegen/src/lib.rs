@@ -37,8 +37,6 @@ pub fn test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 async {
                     let session = gear_test_runtime::active_session();
                     let test_name = stringify!(#ident);
-                    context.test_start(test_name);
-
                     #ident(&session).await;
                 }
             );

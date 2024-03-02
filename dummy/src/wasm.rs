@@ -28,13 +28,11 @@ async fn main() {
 }
 
 #[gear_test_codegen::test]
-async fn smoky(context: &gear_test_runtime::TestContext) -> gear_test_runtime::TestResult {
-    context.assert(
-        msg::send_bytes_for_reply(context.testee().clone(), b"PING", 0, 0)
-            .expect("failed to send")
-            .await
-            .expect("Failed to handle simple PING!")
-            == b"PONG",
-        "Reply to PING is not PONG!!1".to_string(),
-    )
+async fn smoky(context: &gear_test_runtime::SessionData) {
+    let result: Vec<u8> = msg::send_bytes_for_reply(context.testee().clone(), b"PING", 0, 0)
+        .expect("failed to send")
+        .await
+        .expect("Program to handle simple PING!!1");
+
+    assert_eq!(result, b"PONG")
 }
