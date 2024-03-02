@@ -62,28 +62,40 @@ pub fn run_tests(ptr: *const u8) {
                 gstd::debug!("scheduled total {} tests to run...", tests.len());
                 let me = gstd::exec::program_id();
                 let session_id = sessions::new_session(actor_id).await;
+                let mut success_count: u32 = 0;
+                let mut fail_count: u32 = 0;
 
                 for test_index in 0..tests.len() {
                     // running tests synchronously
-                    match msg::send_for_reply(
+                    let test_result = msg::send_for_reply(
                         me,
                         ControlSignal::WrapExecute(session_id.clone(), test_index as u32),
                         0,
                         0,
                     )
                     .expect("Failed to send message")
-                    .await
-                    {
+                    .await;
+
+                    match test_result {
                         Ok(_) => {
                             // TODO: report success
+                            success_count += 1;
+                            gstd::debug!("Finished test #{test_index}: success");
                         }
                         Err(_) => {
                             // TODO: report failure
+                            fail_count += 1;
+                            gstd::debug!("Finished test #{test_index}: fail");
                         }
                     }
-
-                    sessions::drop_session(&session_id).await;
                 }
+
+                gstd::debug!(
+                    "Test session over: {} success, {} failed.",
+                    success_count,
+                    fail_count
+                );
+                sessions::drop_session(&session_id).await;
             }
             ControlSignal::WrapExecute(session_id, test_index) => {
                 sessions::set_active_session(&session_id).await;
@@ -99,7 +111,9 @@ pub fn run_tests(ptr: *const u8) {
                 let test_future =
                     unsafe { core::mem::replace(&mut CONTEXT_FUTURES, Vec::new()).remove(0) };
 
-                test_future.await
+                test_future.await;
+
+                msg::reply((), 0).expect("Failed to reply");
             }
         };
     });
