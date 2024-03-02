@@ -16,11 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use core::{future::Future, pin::Pin};
-use futures::{
-    stream::{FuturesUnordered, StreamExt},
-    FutureExt,
-};
 use gstd::{msg, prelude::*, ActorId};
 
 #[gstd::async_main]

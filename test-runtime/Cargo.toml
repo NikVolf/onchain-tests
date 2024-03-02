@@ -1,26 +1,15 @@
 [package]
 name = "gear-test-runtime"
 version = "0.1.0"
-keywords = ["gear", "codegen", "std"]
-categories = ["api-bindings"]
-edition = "2018"
-
-[lib]
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 gstd = { git = "https://github.com/gear-tech/gear.git"}
 codec = { package = "parity-scale-codec", version = "3.4.0", default-features = false, features = ["derive"] }
 futures = { version = "0.3", default-features = false, features = ["alloc"] }
-hashbrown = "*"
-
-[build-dependencies]
-gear-wasm-builder = { git = "https://github.com/gear-tech/gear.git" }
-gear-core = { git = "https://github.com/gear-tech/gear.git" }
-anyhow = "1"
-pwasm-utils = { git = "http://github.com/nikvolf/wasm-utils", features = ["sign_ext"] }
-
-[dev-dependencies]
-gtest = { git = "https://github.com/gear-tech/gear.git"}
 
 [features]
 debug = ["gstd/debug"]

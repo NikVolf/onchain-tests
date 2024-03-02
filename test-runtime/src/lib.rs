@@ -48,3 +48,12 @@ pub struct ControlSignal {
 pub unsafe extern "C" fn run_tests(ptr: *const u8) {
     includes::run_tests(ptr)
 }
+
+/// Help with dependencies in client code (instead of `async { }.boxed()`)
+pub fn box_test_future(
+    async_block: impl future::Future<Output = ()> + 'static + gstd::Send,
+) -> core::pin::Pin<Box<dyn future::Future<Output = ()> + 'static>> {
+    use futures::FutureExt;
+
+    async_block.boxed()
+}

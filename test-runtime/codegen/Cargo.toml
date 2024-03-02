@@ -1,10 +1,10 @@
 [package]
 name = "gear-test-codegen"
 description = "Code generation library for the Gear tests runtime library"
-keywords = ["gear", "codegen", "std"]
-categories = ["api-bindings"]
-version = "0.1.0"
-edition = "2018"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [lib]
 proc-macro = true
