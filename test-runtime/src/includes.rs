@@ -16,71 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Support library to introduce test runtime to any gear program.
-//!
-//! Use #![gstd_test::runtime] for your crate root always. Decorate any function under
-//! test with #![gstd_test::test] to include it in the test list.
-//!
-//! In your build, include wasm-test-extractor::PreProcessor in build.rs
-//!
-//! Compatible only with gstd::async_main entry point, no custom `unsafe handle`-s please!
-
-use super::{ControlSignal, ProgressSignal};
+use super::ControlSignal;
 use core::{future::Future, pin::Pin};
-use futures::stream::{FuturesUnordered, StreamExt};
-use gstd::{msg, prelude::*, ActorId};
+use gstd::{msg, prelude::*};
+
+use crate::sessions;
 
 #[derive(Debug)]
 pub enum TestResult {
     Ok,
     Fail(String),
-}
-
-#[derive(Debug)]
-pub struct TestContext {
-    deployed_actor: gstd::ActorId,
-    control_bus: gstd::ActorId,
-}
-
-impl TestContext {
-    pub fn current() -> Self {
-        let req = msg::load::<ControlSignal>().expect("Failed to decode control signal");
-
-        TestContext {
-            deployed_actor: req.deployed_actor,
-            control_bus: msg::source(),
-        }
-    }
-
-    fn send_progress(&self, msg: ProgressSignal) {
-        let _ = msg::send(self.control_bus, msg, 0);
-    }
-
-    pub fn test_start(&self, name: &str) {
-        gstd::debug!("test starts: {}", name);
-        self.send_progress(ProgressSignal::TestStart(name.to_string()));
-    }
-
-    pub fn test_success(&self, name: &str) {
-        gstd::debug!("test success: {}", name);
-        self.send_progress(ProgressSignal::TestSuccess(name.to_string()))
-    }
-
-    pub fn test_fail(&self, name: &str, hint: String) {
-        gstd::debug!("test success: {}", name);
-        self.send_progress(ProgressSignal::TestFail(name.to_string(), hint))
-    }
-
-    pub fn testee(&self) -> &ActorId {
-        &self.deployed_actor
-    }
-
-    pub fn assert(&self, cond: bool, fail_hint: String) -> TestResult {
-        match cond {
-            true => TestResult::Ok,
-            false => TestResult::Fail(fail_hint),
-        }
-    }
 }
 
 unsafe fn read_tests(mut ptr: *const u8) -> Vec<unsafe extern "C" fn()> {
@@ -110,25 +55,52 @@ pub fn run_tests(ptr: *const u8) {
 
     gstd::message_loop(async move {
         // invoke all declared tests..
+        let tests = unsafe { read_tests(ptr) };
+        let signal = ControlSignal::current();
+        match signal {
+            ControlSignal::Test(actor_id) => {
+                gstd::debug!("scheduled total {} tests to run...", tests.len());
+                let me = gstd::exec::program_id();
+                let session_id = sessions::new_session(actor_id).await;
 
-        let mut stream = unsafe {
-            gstd::debug!("reading tests...");
-            let tests = read_tests(ptr);
-            gstd::debug!("total tests read: {}", tests.len());
+                for test_index in 0..tests.len() {
+                    // running tests synchronously
+                    match msg::send_for_reply(
+                        me,
+                        ControlSignal::WrapExecute(session_id.clone(), test_index as u32),
+                        0,
+                        0,
+                    )
+                    .expect("Failed to send message")
+                    .await
+                    {
+                        Ok(_) => {
+                            // TODO: report success
+                        }
+                        Err(_) => {
+                            // TODO: report failure
+                        }
+                    }
 
-            for test in tests {
-                test();
+                    sessions::drop_session(&session_id).await;
+                }
             }
+            ControlSignal::WrapExecute(session_id, test_index) => {
+                sessions::set_active_session(&session_id).await;
 
-            // drain message to local var and create FuturesUnordered
-            let mut stream = FuturesUnordered::new();
+                for (index, test) in tests.into_iter().enumerate() {
+                    if index as u32 == test_index {
+                        unsafe {
+                            test();
+                        }
+                    }
+                }
 
-            gstd::debug!("scheduled total {} tests to run...", CONTEXT_FUTURES.len());
-            stream.extend(core::mem::replace(&mut CONTEXT_FUTURES, Vec::new()));
+                let test_future =
+                    unsafe { core::mem::replace(&mut CONTEXT_FUTURES, Vec::new()).remove(0) };
 
-            stream
+                test_future.await
+            }
         };
-
-        while let Some(_res) = stream.next().await {}
     });
 }

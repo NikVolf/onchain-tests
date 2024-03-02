@@ -27,10 +27,13 @@
 
 #![no_std]
 
-use gstd::prelude::*;
+use gstd::{prelude::*, ActorId, MessageId};
 
 mod includes;
-pub use includes::{TestContext, TestResult, CONTEXT_FUTURES};
+mod sessions;
+
+pub use includes::{TestResult, CONTEXT_FUTURES};
+pub use sessions::{active_session, SessionData};
 
 #[derive(Debug, codec::Encode)]
 pub enum ProgressSignal {
@@ -40,8 +43,24 @@ pub enum ProgressSignal {
 }
 
 #[derive(Debug, codec::Decode, codec::Encode)]
-pub struct ControlSignal {
-    pub deployed_actor: gstd::ActorId,
+pub enum ControlSignal {
+    /// Run all tests.
+    ///
+    /// The only action can be called externally.
+    ///
+    /// TODO: add test filter
+    Test(ActorId),
+
+    /// Execute single test to try catch panic if any.
+    ///
+    /// Can only be called internally by this actor.
+    WrapExecute(MessageId, u32),
+}
+
+impl ControlSignal {
+    pub fn current() -> Self {
+        gstd::msg::load::<ControlSignal>().expect("Failed to decode control signal")
+    }
 }
 
 #[no_mangle]

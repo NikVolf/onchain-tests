@@ -35,18 +35,11 @@ pub fn test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         pub unsafe extern "C" fn #extern_ident() {
             let test_future = gear_test_runtime::box_test_future(
                 async {
-                    let context = gear_test_runtime::TestContext::current();
+                    let session = gear_test_runtime::active_session();
                     let test_name = stringify!(#ident);
                     context.test_start(test_name);
 
-                    match #ident(&context).await {
-                        gear_test_runtime::TestResult::Ok => {
-                            context.test_success(test_name);
-                        },
-                        gear_test_runtime::TestResult::Fail(hint) => {
-                            context.test_fail(test_name, hint);
-                        }
-                    };
+                    #ident(&session).await;
                 }
             );
 
