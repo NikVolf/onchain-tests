@@ -23,12 +23,6 @@ use futures::{
 };
 use gstd::{msg, prelude::*, ActorId};
 
-#[derive(Debug, codec::Encode)]
-pub enum ProgressSignal {
-    TestStart(String),
-    TestSuccess(String),
-}
-
 #[gstd::async_main]
 async fn main() {
     let payload = msg::load_bytes().expect("Failed to load payload");
@@ -48,9 +42,4 @@ async fn smoky(context: &gear_test_runtime::TestContext) -> gear_test_runtime::T
             == b"PONG",
         "Reply to PING is not PONG!!1".to_string(),
     )
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn run_tests(ptr: *const u8) {
-    gear_test_runtime::run_tests(ptr)
 }

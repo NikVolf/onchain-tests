@@ -27,10 +27,24 @@
 
 #![no_std]
 
+use gstd::prelude::*;
+
+mod includes;
+pub use includes::{TestContext, TestResult, CONTEXT_FUTURES};
+
+#[derive(Debug, codec::Encode)]
+pub enum ProgressSignal {
+    TestStart(String),
+    TestSuccess(String),
+    TestFail(String, String),
+}
+
 #[derive(Debug, codec::Decode, codec::Encode)]
 pub struct ControlSignal {
     pub deployed_actor: gstd::ActorId,
 }
 
-mod includes;
-pub use includes::{run_tests, TestContext, TestResult, CONTEXT_FUTURES};
+#[no_mangle]
+pub unsafe extern "C" fn run_tests(ptr: *const u8) {
+    includes::run_tests(ptr)
+}

@@ -25,32 +25,21 @@
 //!
 //! Compatible only with gstd::async_main entry point, no custom `unsafe handle`-s please!
 
+use super::{ControlSignal, ProgressSignal};
 use core::{future::Future, pin::Pin};
 use futures::stream::{FuturesUnordered, StreamExt};
 use gstd::{msg, prelude::*, ActorId};
 
-#[derive(Debug, codec::Encode)]
-pub enum ProgressSignal {
-    TestStart(String),
-    TestSuccess(String),
-    TestFail(String, String),
-}
-
-#[derive(Debug, codec::Decode, codec::Encode)]
-pub struct ControlSignal {
-    pub deployed_actor: gstd::ActorId,
+#[derive(Debug)]
+pub enum TestResult {
+    Ok,
+    Fail(String),
 }
 
 #[derive(Debug)]
 pub struct TestContext {
     deployed_actor: gstd::ActorId,
     control_bus: gstd::ActorId,
-}
-
-#[derive(Debug)]
-pub enum TestResult {
-    Ok,
-    Fail(String),
 }
 
 impl TestContext {

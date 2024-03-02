@@ -29,16 +29,11 @@ pub use code::WASM_BINARY_OPT as WASM_BINARY;
 #[cfg(not(feature = "std"))]
 mod wasm;
 
-#[derive(Debug, codec::Decode, codec::Encode)]
-pub struct ControlSignal {
-    pub deployed_actor: gstd::ActorId,
-}
-
 #[cfg(test)]
 mod tests {
     extern crate std;
 
-    use super::ControlSignal;
+    use gear_test_runtime::ControlSignal;
     use gtest::{Program, System};
 
     #[test]
