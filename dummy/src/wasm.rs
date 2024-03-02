@@ -29,7 +29,7 @@ async fn main() {
 
 #[gear_test_codegen::test]
 async fn good(context: &gear_test_runtime::SessionData) {
-    let result: Vec<u8> = msg::send_bytes_for_reply(context.testee().clone(), b"PING", 0, 0)
+    let result: Vec<u8> = msg::send_bytes_for_reply(context.testee(), b"PING", 0, 0)
         .expect("failed to send")
         .await
         .expect("Program to handle simple PING!!1");
@@ -39,7 +39,7 @@ async fn good(context: &gear_test_runtime::SessionData) {
 
 #[gear_test_codegen::test]
 async fn bad(context: &gear_test_runtime::SessionData) {
-    let result: Vec<u8> = msg::send_bytes_for_reply(context.testee().clone(), b"PING", 0, 0)
+    let result: Vec<u8> = msg::send_bytes_for_reply(context.testee(), b"PING", 0, 0)
         .expect("failed to send")
         .await
         .expect("Program to handle simple PING!!1");
