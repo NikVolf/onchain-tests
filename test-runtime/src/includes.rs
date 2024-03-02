@@ -26,16 +26,14 @@
 //! Compatible only with gstd::async_main entry point, no custom `unsafe handle`-s please!
 
 use core::{future::Future, pin::Pin};
-use futures::{
-    stream::{FuturesUnordered, StreamExt},
-    FutureExt,
-};
+use futures::stream::{FuturesUnordered, StreamExt};
 use gstd::{msg, prelude::*, ActorId};
 
 #[derive(Debug, codec::Encode)]
 pub enum ProgressSignal {
     TestStart(String),
     TestSuccess(String),
+    TestFail(String, String),
 }
 
 #[derive(Debug, codec::Decode, codec::Encode)]
@@ -79,6 +77,11 @@ impl TestContext {
         self.send_progress(ProgressSignal::TestSuccess(name.to_string()))
     }
 
+    pub fn test_fail(&self, name: &str, hint: String) {
+        gstd::debug!("test success: {}", name);
+        self.send_progress(ProgressSignal::TestFail(name.to_string(), hint))
+    }
+
     pub fn testee(&self) -> &ActorId {
         &self.deployed_actor
     }
@@ -98,7 +101,7 @@ unsafe fn read_tests(mut ptr: *const u8) -> Vec<unsafe extern "C" fn()> {
 
     let mut result: Vec<unsafe extern "C" fn()> = Vec::new();
 
-    for i in 0..len {
+    for _ in 0..len {
         ptr = ptr.offset(4);
         buf.clone_from_slice(slice::from_raw_parts(ptr, 4));
 
@@ -111,8 +114,7 @@ unsafe fn read_tests(mut ptr: *const u8) -> Vec<unsafe extern "C" fn()> {
 }
 
 // thread-local-like variable for run_tests workflow (synchronously populating one big future)
-pub static mut CONTEXT_FUTURES: Vec<Pin<Box<dyn Future<Output = TestResult> + 'static>>> =
-    Vec::new();
+pub static mut CONTEXT_FUTURES: Vec<Pin<Box<dyn Future<Output = ()> + 'static>>> = Vec::new();
 
 pub fn run_tests(ptr: *const u8) {
     // at the moment, just runs all tests
@@ -138,15 +140,6 @@ pub fn run_tests(ptr: *const u8) {
             stream
         };
 
-        while let Some(res) = stream.next().await {
-            match res {
-                TestResult::Ok => {
-                    gstd::debug!("test ok.");
-                }
-                TestResult::Fail(hint) => {
-                    gstd::debug!("test not ok: {}", hint);
-                }
-            };
-        }
+        while let Some(_res) = stream.next().await {}
     });
 }

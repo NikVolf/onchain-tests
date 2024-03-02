@@ -18,19 +18,12 @@
 
 //! Provides macros for async runtime of Gear programs.
 
-use core::fmt::Display;
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
-use quote::{quote, ToTokens};
-use std::collections::BTreeSet;
-use syn::{
-    parse::{Parse, ParseStream},
-    punctuated::Punctuated,
-    Path, Token,
-};
+use quote::quote;
 
 #[proc_macro_attribute]
-pub fn test(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let function = syn::parse_macro_input!(item as syn::ItemFn);
     let ident = &function.sig.ident;
     let extern_ident = Ident::new(&format!("test_{}", ident), Span::call_site());
@@ -42,13 +35,17 @@ pub fn test(attr: TokenStream, item: TokenStream) -> TokenStream {
         pub unsafe extern "C" fn #extern_ident() {
             let test_future = async {
                 let context = gear_test_runtime::TestContext::current();
-                context.test_start("test_smoky");
+                let test_name = stringify!(#ident);
+                context.test_start(test_name);
 
-                let result = #ident(&context).await;
-
-                context.test_success("test_smoky");
-
-                result
+                match #ident(&context).await {
+                    gear_test_runtime::TestResult::Ok => {
+                        context.test_success(test_name);
+                    },
+                    gear_test_runtime::TestResult::Fail(hint) => {
+                        context.test_fail(test_name, hint);
+                    }
+                };
             }.boxed();
 
             gear_test_runtime::CONTEXT_FUTURES.push(test_future);
