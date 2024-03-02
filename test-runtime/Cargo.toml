@@ -1,33 +1,26 @@
 [package]
-name = "dummy-wasm"
+name = "gear-test-runtime"
 version = "0.1.0"
-authors.workspace = true
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
+keywords = ["gear", "codegen", "std"]
+categories = ["api-bindings"]
+edition = "2018"
+
+[lib]
 
 [dependencies]
 gstd = { git = "https://github.com/gear-tech/gear.git"}
 codec = { package = "parity-scale-codec", version = "3.4.0", default-features = false, features = ["derive"] }
 futures = { version = "0.3", default-features = false, features = ["alloc"] }
 hashbrown = "*"
-gear-test-codegen = { path = "../test-runtime/codegen" }
-gear-test-runtime = { path = "../test-runtime" }
 
 [build-dependencies]
 gear-wasm-builder = { git = "https://github.com/gear-tech/gear.git" }
 gear-core = { git = "https://github.com/gear-tech/gear.git" }
-anyhow = "*"
+anyhow = "1"
 pwasm-utils = { git = "http://github.com/nikvolf/wasm-utils", features = ["sign_ext"] }
-wasm-test-extractor = { path = "../extractor" }
 
 [dev-dependencies]
 gtest = { git = "https://github.com/gear-tech/gear.git"}
 
 [features]
 debug = ["gstd/debug"]
-default = ["std"]
-std = []
-
-[patch.crates-io]
-parity-wasm = { version = "0.45.0", git = "https://github.com/gear-tech/parity-wasm", branch = "v0.45.0-sign-ext" }

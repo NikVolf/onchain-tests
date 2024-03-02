@@ -11,4 +11,6 @@ resolver = "2"
 members = [
     "dummy",
     "extractor",
+    "test-runtime",
+    "test-runtime/codegen",
 ]

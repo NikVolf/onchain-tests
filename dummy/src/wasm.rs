@@ -16,7 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::ControlSignal;
 use core::{future::Future, pin::Pin};
 use futures::{
     stream::{FuturesUnordered, StreamExt},
@@ -39,133 +38,19 @@ async fn main() {
     }
 }
 
-struct TestContext {
-    deployed_actor: gstd::ActorId,
-    control_bus: gstd::ActorId,
-}
-
-enum TestResult {
-    Ok,
-    Fail(String),
-}
-
-impl TestContext {
-    fn current() -> Self {
-        let req = msg::load::<ControlSignal>().expect("Failed to decode control signal");
-
-        TestContext {
-            deployed_actor: req.deployed_actor,
-            control_bus: msg::source(),
-        }
-    }
-
-    fn send_progress(&self, msg: ProgressSignal) {
-        let _ = msg::send(self.control_bus, msg, 0);
-    }
-
-    fn test_start(&self, name: &str) {
-        gstd::debug!("test starts: {}", name);
-        self.send_progress(ProgressSignal::TestStart(name.to_string()));
-    }
-
-    fn test_success(&self, name: &str) {
-        gstd::debug!("test success: {}", name);
-        self.send_progress(ProgressSignal::TestSuccess(name.to_string()))
-    }
-
-    fn testee(&self) -> &ActorId {
-        &self.deployed_actor
-    }
-
-    fn assert(&self, cond: bool, fail_hint: String) -> TestResult {
-        match cond {
-            true => TestResult::Ok,
-            false => TestResult::Fail(fail_hint),
-        }
-    }
-}
-
-// thread-local-like variable for run_tests workflow (synchronously populating one big future)
-static mut CONTEXT_FUTURES: Vec<Pin<Box<dyn Future<Output = TestResult> + 'static>>> = Vec::new();
-
-#[no_mangle]
-pub unsafe extern "C" fn test_smoky() {
-    let test_future = async {
-        // test preamble
-        let context = TestContext::current();
-        context.test_start("test_smoky");
-
-        // test body
-        let result = {
-            context.assert(
-                msg::send_bytes_for_reply(context.testee().clone(), b"PING", 0, 0)
-                    .expect("failed to send")
-                    .await
-                    .expect("Failed to handle simple PING!")
-                    == b"PONG",
-                "Reply to PING is not PONG!!1".to_string(),
-            )
-        };
-
-        // test epilogue
-        context.test_success("test_smoky");
-        result
-    }
-    .boxed();
-
-    unsafe {
-        CONTEXT_FUTURES.push(test_future);
-    }
-}
-
-unsafe fn read_tests(mut ptr: *const u8) -> Vec<unsafe extern "C" fn()> {
-    let mut buf = [0u8; 4];
-    buf.clone_from_slice(slice::from_raw_parts(ptr, 4));
-    let len = u32::from_le_bytes(buf);
-
-    let mut result: Vec<unsafe extern "C" fn()> = Vec::new();
-
-    for i in 0..len {
-        ptr = ptr.offset(4);
-        buf.clone_from_slice(slice::from_raw_parts(ptr, 4));
-
-        let u32_ptr = u32::from_le_bytes(buf);
-
-        result.push(core::mem::transmute(u32_ptr));
-    }
-
-    result
+#[gear_test_codegen::test]
+async fn smoky(context: &gear_test_runtime::TestContext) -> gear_test_runtime::TestResult {
+    context.assert(
+        msg::send_bytes_for_reply(context.testee().clone(), b"PING", 0, 0)
+            .expect("failed to send")
+            .await
+            .expect("Failed to handle simple PING!")
+            == b"PONG",
+        "Reply to PING is not PONG!!1".to_string(),
+    )
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn run_tests(ptr: *const u8) {
-    // at the moment, just runs all tests
-
-    gstd::message_loop(async move {
-        // invoke all declared tests..
-
-        gstd::debug!("reading tests...");
-        let tests = read_tests(ptr);
-        gstd::debug!("total tests read: {}", tests.len());
-
-        for test in tests {
-            test();
-        }
-
-        // drain message to local var and create FuturesUnordered
-        let mut stream = FuturesUnordered::new();
-        gstd::debug!("scheduled total {} tests to run...", CONTEXT_FUTURES.len());
-        stream.extend(core::mem::replace(&mut CONTEXT_FUTURES, Vec::new()));
-
-        while let Some(res) = stream.next().await {
-            match res {
-                TestResult::Ok => {
-                    gstd::debug!("test ok.");
-                }
-                TestResult::Fail(hint) => {
-                    gstd::debug!("test not ok: {}", hint);
-                }
-            };
-        }
-    });
+    gear_test_runtime::run_tests(ptr)
 }
