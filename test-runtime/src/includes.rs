@@ -82,10 +82,10 @@ pub fn run_tests(ptr: *const u8) {
                             success_count += 1;
                             gstd::debug!("Finished test #{test_index}: success");
                         }
-                        Err(_) => {
+                        Err(e) => {
                             // TODO: report failure
                             fail_count += 1;
-                            gstd::debug!("Finished test #{test_index}: fail");
+                            gstd::debug!("Finished test #{test_index}: fail\nOutput: {e}");
                         }
                     }
                 }
