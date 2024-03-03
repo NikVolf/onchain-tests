@@ -9,7 +9,7 @@ repository.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 parity-wasm = "0.45.0"
-anyhow = "*"
+anyhow = "1.0"
 wabt = "0.10"
 wasm-graph = "0.2"
 
