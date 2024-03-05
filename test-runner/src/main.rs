@@ -16,5 +16,25 @@
 // You should have received a copy of the GNU General Public Licensec
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-pub fn main() {
+use std::path::Path;
+use anyhow::Result;
+
+mod control_bus;
+
+pub fn run_from_bin_path(bin_path_file: impl AsRef<Path>) -> anyhow::Result<()> {
+    unimplemented!()
+
+}
+
+pub fn run_from_dir(directory: impl AsRef<Path>) -> anyhow::Result<()> {
+    unimplemented!()
+
+}
+
+pub fn run_tests(program_wasm_path: impl AsRef<Path>, progrm_test_path: impl AsRef<Path>) -> anyhow::Result<()> {
+    unimplemented!()
+}
+
+pub fn main() -> anyhow::Result<()> {
+    unimplemented!()
 }

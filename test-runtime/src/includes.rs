@@ -61,12 +61,13 @@ pub fn run_tests(ptr: *const u8) {
             ControlSignal::Test(actor_id) => {
                 gstd::debug!("scheduled total {} tests to run...", tests.len());
                 let me = gstd::exec::program_id();
-                let session_id = sessions::new_session(actor_id).await;
+                let (session_id, _) = sessions::new_session(actor_id).await;
                 let mut success_count: u32 = 0;
                 let mut fail_count: u32 = 0;
 
                 for test_index in 0..tests.len() {
                     // running tests synchronously
+
                     let test_result = msg::send_for_reply(
                         me,
                         ControlSignal::WrapExecute(session_id.clone(), test_index as u32),

@@ -40,19 +40,19 @@ impl SessionData {
         let _ = msg::send(self.control_bus, msg, 0);
     }
 
-    pub fn test_start(&self, name: &str) {
+    pub fn test_start(&self, index: u32, name: &str) {
         gstd::debug!("test starts: {}", name);
-        self.send_progress(ProgressSignal::TestStart(name.to_string()));
+        self.send_progress(ProgressSignal::new(index, name.to_string()));
     }
 
-    pub fn test_success(&self, name: &str) {
+    pub fn test_success(&self, index: u32, name: &str) {
         gstd::debug!("test success: {}", name);
-        self.send_progress(ProgressSignal::TestSuccess(name.to_string()))
+        self.send_progress(ProgressSignal::new(index, name.to_string()).success());
     }
 
-    pub fn test_fail(&self, name: &str, hint: String) {
+    pub fn test_fail(&self, index: u32, name: &str, hint: String) {
         gstd::debug!("test success: {}", name);
-        self.send_progress(ProgressSignal::TestFail(name.to_string(), hint))
+        self.send_progress(ProgressSignal::new(index, name.to_string()).fail(hint))
     }
 }
 
@@ -60,7 +60,7 @@ impl SessionData {
 static SESSIONS: RwLock<Vec<Session>> = RwLock::new(Vec::new());
 static mut ACTIVE_SESSION: Option<SessionData> = None;
 
-pub async fn new_session(under_test_actor: ActorId) -> MessageId {
+pub async fn new_session(under_test_actor: ActorId) -> (MessageId, SessionData) {
     let data = SessionData {
         control_bus: msg::source(),
         under_test_actor,
@@ -68,10 +68,10 @@ pub async fn new_session(under_test_actor: ActorId) -> MessageId {
     let init_message = msg::id();
     SESSIONS.write().await.push(Session {
         init_message: init_message.clone(),
-        data,
+        data: data.clone(),
     });
 
-    init_message
+    (init_message, data)
 }
 
 /// Locate existing session.

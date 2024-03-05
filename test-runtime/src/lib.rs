@@ -35,11 +35,51 @@ mod sessions;
 pub use includes::{TestResult, CONTEXT_FUTURES};
 pub use sessions::{active_session, SessionData};
 
-#[derive(Debug, codec::Encode)]
-pub enum ProgressSignal {
-    TestStart(String),
-    TestSuccess(String),
-    TestFail(String, String),
+#[derive(Debug, codec::Encode, codec::Decode)]
+pub enum TestUpdate {
+    Start,
+    Success,
+    /// contains information about panic / error happened
+    Fail(String),
+}
+
+#[derive(Debug, codec::Encode, codec::Decode)]
+pub struct TestInfo {
+    index: u32,
+    name: String,
+}
+
+#[derive(Debug, codec::Encode, codec::Decode)]
+pub struct ProgressSignal {
+    pub test_info: TestInfo,
+    pub update: TestUpdate,
+}
+
+impl ProgressSignal {
+    pub fn new(index: u32, name: String) -> Self {
+        ProgressSignal {
+            test_info: TestInfo { index, name},
+            update: TestUpdate::Start,
+        }
+    }
+
+    pub fn success(self) -> Self {
+        let test_info = self.test_info;
+
+        ProgressSignal {
+            test_info,
+            update: TestUpdate::Success,
+        }
+    }
+
+    pub fn fail(self, hint: String) -> Self {
+        let test_info = self.test_info;
+
+        ProgressSignal {
+            test_info,
+            update: TestUpdate::Fail(hint),
+        }
+    }
 }
 
 #[derive(Debug, codec::Decode, codec::Encode)]
