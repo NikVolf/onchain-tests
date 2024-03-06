@@ -45,8 +45,8 @@ pub enum TestUpdate {
 
 #[derive(Debug, codec::Encode, codec::Decode)]
 pub struct TestInfo {
-    index: u32,
-    name: String,
+    pub index: u32,
+    pub name: String,
 }
 
 #[derive(Debug, codec::Encode, codec::Decode)]
