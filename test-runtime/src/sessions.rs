@@ -51,7 +51,7 @@ impl SessionData {
     }
 
     pub fn test_fail(&self, index: u32, name: &str, hint: String) {
-        gstd::debug!("test success: {}", name);
+        gstd::debug!("test fail: {}", name);
         self.send_progress(ProgressSignal::new(index, name.to_string()).fail(hint))
     }
 }

@@ -32,7 +32,7 @@ use gstd::{prelude::*, ActorId, MessageId};
 mod includes;
 mod sessions;
 
-pub use includes::{TestResult, CONTEXT_FUTURES};
+pub use includes::{ContextFuture, TestResult, CONTEXT_FUTURES};
 pub use sessions::{active_session, SessionData};
 
 #[derive(Debug, codec::Encode, codec::Decode)]
@@ -58,7 +58,7 @@ pub struct ProgressSignal {
 impl ProgressSignal {
     pub fn new(index: u32, name: String) -> Self {
         ProgressSignal {
-            test_info: TestInfo { index, name},
+            test_info: TestInfo { index, name },
             update: TestUpdate::Start,
         }
     }
@@ -106,13 +106,4 @@ impl ControlSignal {
 #[no_mangle]
 pub unsafe extern "C" fn run_tests(ptr: *const u8) {
     includes::run_tests(ptr)
-}
-
-/// Help with dependencies in client code (instead of `async { }.boxed()`)
-pub fn box_test_future(
-    async_block: impl future::Future<Output = ()> + 'static + gstd::Send,
-) -> core::pin::Pin<Box<dyn future::Future<Output = ()> + 'static>> {
-    use futures::FutureExt;
-
-    async_block.boxed()
 }

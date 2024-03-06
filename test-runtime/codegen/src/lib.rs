@@ -33,12 +33,12 @@ pub fn test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
         #[no_mangle]
         pub unsafe extern "C" fn #extern_ident() {
-            let test_future = gear_test_runtime::box_test_future(
+            let test_future = gear_test_runtime::ContextFuture::new(
                 async {
                     let session = gear_test_runtime::active_session();
-                    let test_name = stringify!(#ident);
                     #ident(&session).await;
-                }
+                },
+                stringify!(#ident),
             );
 
             gear_test_runtime::CONTEXT_FUTURES.push(test_future);

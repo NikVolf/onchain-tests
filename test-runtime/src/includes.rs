@@ -47,26 +47,81 @@ unsafe fn read_tests(mut ptr: *const u8) -> Vec<unsafe extern "C" fn()> {
     result
 }
 
+pub struct ContextFuture {
+    fut: Pin<Box<dyn Future<Output = ()> + 'static>>,
+    name: &'static str,
+}
+
+impl ContextFuture {
+    pub fn new(
+        fut: impl future::Future<Output = ()> + 'static + gstd::Send,
+        name: &'static str,
+    ) -> Self {
+        use futures::FutureExt;
+        ContextFuture {
+            fut: fut.boxed(),
+            name,
+        }
+    }
+
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+
+    pub fn into_future(self) -> Pin<Box<dyn Future<Output = ()> + 'static>> {
+        self.fut
+    }
+}
+
+fn extract_test_context(ptr: *const u8, index: u32) -> ContextFuture {
+    unsafe {
+        let tests = read_tests(ptr);
+        let test_by_index = tests[index as usize];
+        test_by_index();
+
+        let test_future = core::mem::replace(&mut CONTEXT_FUTURES, Vec::new()).remove(0);
+
+        test_future
+    }
+}
+
+fn extract_test_names(ptr: *const u8) -> Vec<&'static str> {
+    unsafe {
+        let tests = read_tests(ptr);
+        for test in tests {
+            test()
+        }
+        core::mem::replace(&mut CONTEXT_FUTURES, Vec::new())
+            .into_iter()
+            .map(|con_fut| con_fut.name())
+            .collect()
+    }
+}
+
 // thread-local-like variable for run_tests workflow (synchronously populating one big future)
-pub static mut CONTEXT_FUTURES: Vec<Pin<Box<dyn Future<Output = ()> + 'static>>> = Vec::new();
+pub static mut CONTEXT_FUTURES: Vec<ContextFuture> = Vec::new();
 
 pub fn run_tests(ptr: *const u8) {
     // at the moment, just runs all tests
 
     gstd::message_loop(async move {
         // invoke all declared tests..
-        let tests = unsafe { read_tests(ptr) };
         let signal = ControlSignal::current();
         match signal {
             ControlSignal::Test(actor_id) => {
-                gstd::debug!("scheduled total {} tests to run...", tests.len());
                 let me = gstd::exec::program_id();
-                let (session_id, _) = sessions::new_session(actor_id).await;
+                let (session_id, active_session) = sessions::new_session(actor_id).await;
                 let mut success_count: u32 = 0;
                 let mut fail_count: u32 = 0;
+                let test_names = extract_test_names(ptr);
+                let test_count = test_names.len() as u32;
+                gstd::debug!("scheduled total {test_count} tests to run...");
 
-                for test_index in 0..tests.len() {
+                for test_index in 0..test_count {
                     // running tests synchronously
+
+                    let test_name = test_names[test_index as usize];
+                    active_session.test_start(test_index, test_name);
 
                     let test_result = msg::send_for_reply(
                         me,
@@ -81,38 +136,36 @@ pub fn run_tests(ptr: *const u8) {
                         Ok(_) => {
                             // TODO: report success
                             success_count += 1;
+                            active_session.test_success(test_index, test_name);
                             gstd::debug!("Finished test #{test_index}: success");
                         }
                         Err(e) => {
                             // TODO: report failure
                             fail_count += 1;
+                            active_session.test_fail(
+                                test_index,
+                                test_name,
+                                gstd::string::ToString::to_string(&e),
+                            );
                             gstd::debug!("Finished test #{test_index}: fail\nOutput: {e}");
                         }
                     }
                 }
 
                 gstd::debug!(
-                    "Test session over: {} success, {} failed.",
+                    "Test session over: {} success, {} failed, {} total.",
                     success_count,
-                    fail_count
+                    fail_count,
+                    test_count,
                 );
                 sessions::drop_session(&session_id).await;
             }
             ControlSignal::WrapExecute(session_id, test_index) => {
                 sessions::set_active_session(&session_id).await;
 
-                for (index, test) in tests.into_iter().enumerate() {
-                    if index as u32 == test_index {
-                        unsafe {
-                            test();
-                        }
-                    }
-                }
-
-                let test_future =
-                    unsafe { core::mem::replace(&mut CONTEXT_FUTURES, Vec::new()).remove(0) };
-
-                test_future.await;
+                // TODO: make sure it is obvious that only one is used?
+                let test_future = extract_test_context(ptr, test_index);
+                test_future.into_future().await;
 
                 msg::reply((), 0).expect("Failed to reply");
             }
