@@ -28,9 +28,13 @@ async fn main() {
 }
 
 async fn create_this(code_hash: &CodeId) -> ActorId {
-    let (_, actor_id) =
-        gstd::prog::ProgramGenerator::create_program_bytes(code_hash.clone(), b"PING", 0)
-            .expect("Failed to create this/self");
+    let (actor_id, _reply) =
+        gstd::prog::ProgramGenerator::create_program_bytes_for_reply(code_hash.clone(), b"PING", 0, 0)
+            .expect("Failed to create this/self")
+            .await
+            .expect("Failed to initialize this/self");
+
+    gstd::debug!("Created! (never enters this line)");
 
     actor_id
 }
