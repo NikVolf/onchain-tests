@@ -60,10 +60,13 @@ impl SessionData {
 static SESSIONS: RwLock<Vec<Session>> = RwLock::new(Vec::new());
 static mut ACTIVE_SESSION: Option<SessionData> = None;
 
-pub async fn new_session(under_test_actor: ActorId) -> (MessageId, SessionData) {
+pub async fn new_session(
+    under_test_actor: ActorId,
+    control_bus: ActorId,
+) -> (MessageId, SessionData) {
     let data = SessionData {
-        control_bus: msg::source(),
         under_test_actor,
+        control_bus,
     };
     let init_message = msg::id();
     SESSIONS.write().await.push(Session {

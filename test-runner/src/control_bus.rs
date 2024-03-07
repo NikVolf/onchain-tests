@@ -24,7 +24,7 @@ use gtest::WasmProgram;
 use gear_test_runtime::{ProgressSignal, TestUpdate};
 
 #[derive(Debug, Default)]
-struct ControlBus {
+pub struct ControlBus {
     total_tests: u32,
     total_success: u32,
     total_failed: u32,

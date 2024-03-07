@@ -60,8 +60,20 @@ pub fn run_tests(
     let res = prog.send_bytes(0, vec![]);
     assert!(!res.main_failed());
 
+    // control bus program (for results telemetry)
+    let control = Program::mock(&system, control_bus::ControlBus::default());
+    // apparently it also should be initialized
+    let res = control.send_bytes(0, vec![]);
+    assert!(!res.main_failed());
+
     // actual test run
-    let res = test_program.send(0, ControlSignal::Test(prog.id().into_bytes().into()));
+    let res = test_program.send(
+        0,
+        ControlSignal::Test {
+            deployed_program: prog.id().into_bytes().into(),
+            control_bus: control.id().into_bytes().into(),
+        },
+    );
     assert!(!res.main_failed());
 
     Ok(())

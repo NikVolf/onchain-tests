@@ -108,13 +108,19 @@ pub fn run_tests(ptr: *const u8) {
         // invoke all declared tests..
         let signal = ControlSignal::current();
         match signal {
-            ControlSignal::Test(actor_id) => {
+            ControlSignal::Test {
+                deployed_program,
+                control_bus,
+            } => {
                 let me = gstd::exec::program_id();
-                let (session_id, active_session) = sessions::new_session(actor_id).await;
+                let (session_id, active_session) =
+                    sessions::new_session(deployed_program, control_bus).await;
+
                 let mut success_count: u32 = 0;
                 let mut fail_count: u32 = 0;
                 let test_names = extract_test_names(ptr);
                 let test_count = test_names.len() as u32;
+
                 gstd::debug!("scheduled total {test_count} tests to run...");
 
                 for test_index in 0..test_count {

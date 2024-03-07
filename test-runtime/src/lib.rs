@@ -89,7 +89,10 @@ pub enum ControlSignal {
     /// The only action can be called externally.
     ///
     /// TODO: add test filter
-    Test(ActorId),
+    Test {
+        deployed_program: ActorId,
+        control_bus: ActorId,
+    },
 
     /// Execute single test to try catch panic if any.
     ///
