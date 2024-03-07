@@ -7,7 +7,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-gtest = { path = "../../gear/gtest" }
+gtest = { git = "https://github.com/gear-tech/gear" }
 anyhow = "1.0"
 codec = { package = "parity-scale-codec", version = "3.4.0", default-features = false, features = ["derive"] }
 gear-test-runtime = { path = "../test-runtime" }
