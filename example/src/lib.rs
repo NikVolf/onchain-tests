@@ -50,15 +50,17 @@ mod tests {
         assert!(!res.main_failed());
 
         // actual program
-        let prog = Program::from_file(
-            &system,
-            "../target/wasm32-unknown-unknown/debug/example.opt.wasm",
-        );
-        let res = prog.send_bytes(0, b"init here");
-        assert!(!res.main_failed());
+        let code_hash =
+            system.submit_code("../target/wasm32-unknown-unknown/debug/example.opt.wasm");
 
         // actual test run
-        let res = test_program.send(0, ControlSignal::Test(prog.id().into_bytes().into()));
+        let res = test_program.send(
+            0,
+            ControlSignal::Test {
+                code_hash: code_hash.into_bytes().into(),
+                control_bus: test_program.id().into_bytes().into(),
+            },
+        );
         assert!(!res.main_failed());
     }
 }

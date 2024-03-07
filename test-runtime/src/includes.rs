@@ -109,12 +109,12 @@ pub fn run_tests(ptr: *const u8) {
         let signal = ControlSignal::current();
         match signal {
             ControlSignal::Test {
-                deployed_program,
+                code_hash,
                 control_bus,
             } => {
                 let me = gstd::exec::program_id();
                 let (session_id, active_session) =
-                    sessions::new_session(deployed_program, control_bus).await;
+                    sessions::new_session(code_hash, control_bus).await;
 
                 let mut success_count: u32 = 0;
                 let mut fail_count: u32 = 0;

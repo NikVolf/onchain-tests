@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use super::ProgressSignal;
-use gstd::{msg, prelude::*, sync::RwLock, ActorId, MessageId};
+use gstd::{msg, prelude::*, sync::RwLock, ActorId, CodeId, MessageId};
 
 #[derive(Debug)]
 struct Session {
@@ -27,13 +27,13 @@ struct Session {
 
 #[derive(Debug, Clone)]
 pub struct SessionData {
+    code_hash: CodeId,
     control_bus: ActorId,
-    under_test_actor: ActorId,
 }
 
 impl SessionData {
-    pub fn testee(&self) -> ActorId {
-        self.under_test_actor.clone()
+    pub fn testee(&self) -> CodeId {
+        self.code_hash.clone()
     }
 
     fn send_progress(&self, msg: ProgressSignal) {
@@ -60,12 +60,9 @@ impl SessionData {
 static SESSIONS: RwLock<Vec<Session>> = RwLock::new(Vec::new());
 static mut ACTIVE_SESSION: Option<SessionData> = None;
 
-pub async fn new_session(
-    under_test_actor: ActorId,
-    control_bus: ActorId,
-) -> (MessageId, SessionData) {
+pub async fn new_session(code_hash: CodeId, control_bus: ActorId) -> (MessageId, SessionData) {
     let data = SessionData {
-        under_test_actor,
+        code_hash,
         control_bus,
     };
     let init_message = msg::id();

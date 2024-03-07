@@ -54,11 +54,8 @@ pub fn run_tests(
     let res = test_program.send_bytes(0, vec![]); // empty initialization for test program
     assert!(!res.main_failed());
 
-    // actual program
-    let prog = Program::from_file(&system, program_wasm_path);
-    // TODO: specify init message for test program!
-    let res = prog.send_bytes(0, vec![]);
-    assert!(!res.main_failed());
+    // code under test (code_hash)
+    let code_hash = system.submit_code(program_wasm_path);
 
     // control bus program (for results telemetry)
     let control = Program::mock(&system, control_bus::ControlBus::default());
@@ -70,7 +67,7 @@ pub fn run_tests(
     let res = test_program.send(
         0,
         ControlSignal::Test {
-            deployed_program: prog.id().into_bytes().into(),
+            code_hash: code_hash.into_bytes().into(),
             control_bus: control.id().into_bytes().into(),
         },
     );

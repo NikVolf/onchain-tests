@@ -27,7 +27,7 @@
 
 #![no_std]
 
-use gstd::{prelude::*, ActorId, MessageId};
+use gstd::{prelude::*, ActorId, CodeId, MessageId};
 
 mod includes;
 mod sessions;
@@ -90,7 +90,7 @@ pub enum ControlSignal {
     ///
     /// TODO: add test filter
     Test {
-        deployed_program: ActorId,
+        code_hash: CodeId,
         control_bus: ActorId,
     },
 
