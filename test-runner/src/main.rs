@@ -16,19 +16,30 @@
 // You should have received a copy of the GNU General Public Licensec
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use anyhow::Result;
-use gear_test_runtime::{ControlSignal, ProgressSignal, TestUpdate};
+use gear_test_runtime::ControlSignal;
 use gtest::{Program, System};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 mod control_bus;
 
 pub fn run_from_bin_path(bin_path_file: impl AsRef<Path>) -> anyhow::Result<()> {
-    unimplemented!()
+    let wasm_base = std::fs::read_to_string(bin_path_file.as_ref().to_path_buf())?;
+
+    let mut bin_base = bin_path_file.as_ref().to_path_buf();
+    bin_base.pop();
+
+    let wasm_bin_path = bin_base.join(PathBuf::from(format!("{wasm_base}.opt.wasm")));
+
+    let test_bin_path = bin_base.join(PathBuf::from(format!("{wasm_base}_test.opt.wasm")));
+
+    run_tests(wasm_bin_path, test_bin_path)
 }
 
 pub fn run_from_dir(directory: impl AsRef<Path>) -> anyhow::Result<()> {
-    unimplemented!()
+    let mut path = directory.as_ref().to_path_buf();
+    path.push(".binpath");
+
+    run_from_bin_path(path)
 }
 
 pub fn run_tests(
@@ -57,5 +68,15 @@ pub fn run_tests(
 }
 
 pub fn main() -> anyhow::Result<()> {
-    unimplemented!()
+    let actual = if std::env::args().len() <= 1 {
+        std::env::current_dir()?
+    } else {
+        PathBuf::from(
+            std::env::args()
+                .nth(1)
+                .expect("Should exist since args.len() > 1"),
+        )
+    };
+
+    run_from_dir(actual)
 }
