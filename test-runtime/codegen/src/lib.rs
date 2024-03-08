@@ -38,7 +38,7 @@ pub fn test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     let session = gear_test_runtime::active_session();
                     #ident(&session).await;
                 },
-                stringify!(#ident),
+                concat!(module_path!(), "::", stringify!(#ident)),
             );
 
             gear_test_runtime::CONTEXT_FUTURES.push(test_future);

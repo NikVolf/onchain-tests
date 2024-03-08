@@ -17,17 +17,116 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //! Local(gtest) test results collector for onchain tests
+use std::fmt;
+use std::sync::{Arc, RwLock};
 
 use codec::Decode;
+use colored::Colorize;
 use gtest::WasmProgram;
 
-use gear_test_runtime::{ProgressSignal, TestUpdate};
+use gear_test_runtime::{ProgressSignal, TestInfo, TestUpdate};
 
 #[derive(Debug, Default)]
 pub struct ControlBus {
-    total_tests: u32,
-    total_success: u32,
-    total_failed: u32,
+    running_state: Arc<RwLock<State>>,
+}
+
+#[derive(Debug, Default)]
+pub struct State {
+    started: u32,
+    failed: u32,
+    succeded: u32,
+    unfinished: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Report {
+    pub total_started: u32,
+    pub total_failed: u32,
+    pub total_succeded: u32,
+    pub unfinished: Vec<String>,
+}
+
+impl State {
+    pub fn submit_fail(&mut self, test_info: TestInfo) {
+        self.failed += 1;
+        self.remove(test_info);
+    }
+
+    pub fn submit_start(&mut self, test_info: TestInfo) {
+        self.started += 1;
+        self.append(test_info);
+    }
+
+    pub fn submit_success(&mut self, test_info: TestInfo) {
+        self.succeded += 1;
+        self.remove(test_info);
+    }
+
+    fn remove(&mut self, test_info: TestInfo) {
+        let pos = self.unfinished.iter().position(|e| *e == test_info.name);
+        if let Some(pos) = pos {
+            self.unfinished.swap_remove(pos);
+        }
+    }
+
+    fn append(&mut self, test_info: TestInfo) {
+        self.unfinished.push(test_info.name)
+    }
+
+    pub fn report(&self) -> Report {
+        Report {
+            total_started: self.started,
+            total_succeded: self.succeded,
+            total_failed: self.failed,
+            unfinished: self.unfinished.clone(),
+        }
+    }
+}
+
+impl Report {
+    pub fn success(&self) -> bool {
+        if self.unfinished.len() > 0 {
+            false
+        } else if self.total_failed != 0 {
+            false
+        } else if self.total_started != self.total_succeded {
+            false
+        } else {
+            true
+        }
+    }
+}
+
+impl fmt::Display for Report {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(
+            f,
+            "test result: {}. {} passed; {} failed;",
+            match self.success() {
+                true => "ok".green(),
+                false => "fail".red(),
+            },
+            self.total_succeded,
+            self.total_failed
+        )?;
+
+        if !self.unfinished.is_empty() {
+            write!(f, "unfinished tests: [")?;
+            for unfinished in self.unfinished.iter() {
+                write!(f, "{}", unfinished)?;
+            }
+            writeln!(f, "]")?;
+        }
+
+        Ok(())
+    }
+}
+
+impl ControlBus {
+    pub fn running_state(&self) -> Arc<RwLock<State>> {
+        self.running_state.clone()
+    }
 }
 
 impl WasmProgram for ControlBus {
@@ -44,15 +143,21 @@ impl WasmProgram for ControlBus {
 
         match update {
             TestUpdate::Start => {
-                self.total_tests += 1;
+                self.running_state.write().unwrap().submit_start(test_info);
             }
             TestUpdate::Success => {
-                self.total_success += 1;
-                println!("Test {}: ok", test_info.name);
+                println!("test {} ... {}", test_info.name, "ok".green());
+                self.running_state
+                    .write()
+                    .unwrap()
+                    .submit_success(test_info);
             }
             TestUpdate::Fail(hint) => {
-                self.total_failed += 1;
-                println!("Test {}: fail \nError report: {}", test_info.name, hint);
+                println!("test {} ... {}", test_info.name, "fail".red());
+                println!("\t --- ERROR REPORT @ {}", test_info.name);
+                println!("{}", hint);
+                println!("\t --- END OF REPORT @ {}", test_info.name);
+                self.running_state.write().unwrap().submit_fail(test_info);
             }
         }
 

@@ -116,12 +116,8 @@ pub fn run_tests(ptr: *const u8) {
                 let (session_id, active_session) =
                     sessions::new_session(code_hash, control_bus).await;
 
-                let mut success_count: u32 = 0;
-                let mut fail_count: u32 = 0;
                 let test_names = extract_test_names(ptr);
                 let test_count = test_names.len() as u32;
-
-                gstd::debug!("scheduled total {test_count} tests to run...");
 
                 for test_index in 0..test_count {
                     // running tests synchronously
@@ -140,30 +136,18 @@ pub fn run_tests(ptr: *const u8) {
 
                     match test_result {
                         Ok(_) => {
-                            // TODO: report success
-                            success_count += 1;
                             active_session.test_success(test_index, test_name);
-                            gstd::debug!("Finished test #{test_index}: success");
                         }
                         Err(e) => {
-                            // TODO: report failure
-                            fail_count += 1;
                             active_session.test_fail(
                                 test_index,
                                 test_name,
                                 gstd::string::ToString::to_string(&e),
                             );
-                            gstd::debug!("Finished test #{test_index}: fail\nOutput: {e}");
                         }
                     }
                 }
 
-                gstd::debug!(
-                    "Test session over: {} success, {} failed, {} total.",
-                    success_count,
-                    fail_count,
-                    test_count,
-                );
                 sessions::drop_session(&session_id).await;
             }
             ControlSignal::WrapExecute(session_id, test_index) => {
