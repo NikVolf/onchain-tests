@@ -60,7 +60,7 @@ pub fn run_tests(
     // control bus program (for results telemetry)
     let control_bus = control_bus::ControlBus::default();
     let running_state = control_bus.running_state();
-    let control = Program::mock(&system, control_bus::ControlBus::default());
+    let control = Program::mock(&system, control_bus);
     // apparently it also should be initialized
     let res = control.send_bytes(0, vec![]);
     assert!(!res.main_failed());
