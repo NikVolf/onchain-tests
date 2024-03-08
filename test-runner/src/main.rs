@@ -16,10 +16,13 @@
 // You should have received a copy of the GNU General Public Licensec
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use anyhow::Context;
 use gear_test_runtime::ControlSignal;
 use gtest::{Program, System};
+use std::io::{prelude::*, BufReader};
 use std::path::{Path, PathBuf};
-use anyhow::Context;
+use std::process::{Command, Stdio};
+use tempfile::NamedTempFile;
 
 mod control_bus;
 
@@ -87,16 +90,50 @@ pub fn run_tests(
     Ok(())
 }
 
-pub fn main() -> anyhow::Result<()> {
-    let actual = if std::env::args().len() <= 1 {
-        std::env::current_dir()?
-    } else {
-        PathBuf::from(
-            std::env::args()
-                .nth(1)
-                .expect("Should exist since args.len() > 1"),
-        )
-    };
+fn generate_cargo_args() -> Vec<String> {
+    ["build".to_string()]
+        .into_iter()
+        .chain(std::env::args().skip(2))
+        .collect()
+}
 
-    run_from_dir(actual)
+fn main() -> anyhow::Result<()> {
+    let builder_artifacts_file = NamedTempFile::new()?;
+    let builder_artifacts_path = builder_artifacts_file.path().as_os_str();
+
+    let mut cargo_args = generate_cargo_args();
+    cargo_args.push("--config".to_string());
+    cargo_args.push(format!(
+        "env.GEAR_BUILDER_ARTIFACTS=\"{}\"",
+        builder_artifacts_path.to_string_lossy()
+    ));
+
+    eprintln!("Running cargo {}", cargo_args.clone().join(" "));
+
+    let build_out = Command::new("cargo")
+        .args(cargo_args)
+        .stderr(Stdio::inherit())
+        .output()?;
+
+    if !build_out.status.success() {
+        anyhow::bail!(
+            "Cargo command failed (cargo {})",
+            generate_cargo_args().join(" ")
+        );
+    }
+
+    for line in BufReader::new(builder_artifacts_file).lines() {
+        let line = line?;
+        let clone_line = line.clone();
+        let paths = clone_line.split("|").collect::<Vec<_>>();
+        if paths.len() != 2 {
+            anyhow::bail!("Got this from artifacts dump: '{}'. This is invalid, should be '<wasm_path>/<wasm_test_path>'", line);
+        }
+
+        run_tests(paths[0], paths[1])?;
+    }
+
+    // file for gear_test_builder artifacts report;
+
+    Ok(())
 }
