@@ -19,11 +19,13 @@
 use gear_test_runtime::ControlSignal;
 use gtest::{Program, System};
 use std::path::{Path, PathBuf};
+use anyhow::Context;
 
 mod control_bus;
 
 pub fn run_from_bin_path(bin_path_file: impl AsRef<Path>) -> anyhow::Result<()> {
-    let wasm_base = std::fs::read_to_string(bin_path_file.as_ref().to_path_buf())?;
+    let wasm_base = std::fs::read_to_string(bin_path_file.as_ref().to_path_buf())
+        .with_context(|| format!("Reading {:?}", bin_path_file.as_ref().to_path_buf()))?;
 
     let mut bin_base = bin_path_file.as_ref().to_path_buf();
     bin_base.pop();
