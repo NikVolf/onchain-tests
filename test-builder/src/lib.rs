@@ -18,12 +18,11 @@
 
 use anyhow::{Context, Result};
 use gear_core::code::ALLOWED_EXPORTS;
+use gear_wasm_builder::{PreProcessorTarget, WasmBuilder};
 use pwasm_utils::parity_wasm::elements::{Module, Serialize as _};
+use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-
-use gear_wasm_builder::PreProcessorTarget;
-pub use gear_wasm_builder::WasmBuilder;
 
 struct TestBinaryPreProcessor;
 
@@ -39,13 +38,32 @@ fn clone_and_opt(original_module: &Module) -> Result<Vec<u8>> {
     Ok(code)
 }
 
+fn create_and_write_to_file(path: PathBuf, data: &[u8]) -> std::io::Result<()> {
+    let mut file = File::create(path)?;
+    file.write_all(data)?;
+    Ok(())
+}
+
+fn create_artifact_path_and_write(
+    absolute_path: &PathBuf,
+    stem: &str,
+    suffix: &str,
+    data: &[u8],
+) -> std::io::Result<PathBuf> {
+    let mut artifact_path = PathBuf::from(absolute_path.clone());
+    artifact_path.pop();
+    artifact_path.push(format!("{}.{}.wasm", stem, suffix));
+    create_and_write_to_file(artifact_path.clone(), data)?;
+    Ok(artifact_path)
+}
+
 impl gear_wasm_builder::PreProcessor for TestBinaryPreProcessor {
     fn name(&self) -> &'static str {
         "test"
     }
 
     fn pre_process(&self, path: PathBuf) -> Result<Vec<(PreProcessorTarget, Vec<u8>)>> {
-        let contents = std::fs::read(&path).context("Failed to read file by optimizer")?;
+        let contents = std::fs::read(&path).with_context(|| "Failed to read file by optimizer")?;
 
         let absolute_path = path.canonicalize()?;
 
@@ -78,20 +96,18 @@ impl gear_wasm_builder::PreProcessor for TestBinaryPreProcessor {
                 .expect("should be a valid str")
                 .to_string_lossy();
 
-            let mut prog_artifact_path = PathBuf::from(absolute_path.clone());
-            prog_artifact_path.pop();
-            prog_artifact_path.push(format!("{}.opt.wasm", stem));
-
-            let mut test_artifact_path = PathBuf::from(absolute_path.clone());
-            test_artifact_path.pop();
-            test_artifact_path.push(format!("{}_test.opt.wasm", stem));
-
-            let mut file = std::fs::File::create(prog_artifact_path.clone())?;
-            file.write_all(&original_code[..])?;
-            drop(file);
-            let mut file = std::fs::File::create(test_artifact_path.clone())?;
-            file.write_all(&code_with_test_runner[..])?;
-            drop(file);
+            let prog_artifact_path = create_artifact_path_and_write(
+                &absolute_path,
+                stem.as_ref(),
+                "opt",
+                &original_code[..],
+            )?;
+            let test_artifact_path = create_artifact_path_and_write(
+                &absolute_path,
+                stem.as_ref(),
+                "test.opt",
+                &code_with_test_runner[..],
+            )?;
 
             let record = format!(
                 "{}|{}",
@@ -118,4 +134,67 @@ pub fn new() -> WasmBuilder {
     WasmBuilder::new()
         .with_pre_processor(Box::new(TestBinaryPreProcessor))
         .exclude_features(vec!["std"])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gear_wasm_builder::PreProcessor;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+    use wabt::Wat2Wasm;
+
+    #[test]
+    fn test_binary_pre_processor() {
+        let pre_processor = TestBinaryPreProcessor;
+        assert_eq!(pre_processor.name(), "test");
+
+        // Create a WAT module with the necessary exports
+        let wat = r#"
+            (module
+                (func (export "test_func1") (param i32 i32) (result i32)
+                    get_local 0
+                    get_local 1
+                    i32.add)
+                (func (export "test_func2") (param i32 i32) (result i32)
+                    get_local 0
+                    get_local 1
+                    i32.sub)
+                (func (export "handle") (param i32) (result i32)
+                    get_local 0
+                    i32.const 1
+                    i32.add)
+                (func (export "run_tests") (param i32) (result i32)
+                    get_local 0
+                    i32.const 1
+                    i32.add)
+                (memory (export "memory") 1)
+                (table (export "table") 1 anyfunc)
+            )
+        "#;
+
+        // Convert the WAT module to Wasm
+        let wasm = Wat2Wasm::new().convert(wat).unwrap();
+
+        // Create a temporary file
+        let mut temp_file = NamedTempFile::new().unwrap();
+
+        // Write the Wasm bytes to the temporary file
+        temp_file.write_all(wasm.as_ref()).unwrap();
+
+        // Get the path of the temporary file
+        let path = temp_file.path().to_path_buf();
+
+        // Test the pre_process method
+        let result = pre_processor.pre_process(path.clone());
+        assert!(
+            result.is_ok(),
+            "pre_process failed with error: {:?}",
+            result.err()
+        );
+
+        // If you know what the output should be, you can also assert that the result is correct
+        // For example:
+        // assert_eq!(result.unwrap(), expected_output);
+    }
 }

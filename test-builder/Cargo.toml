@@ -12,3 +12,7 @@ gear-core = { git = "https://github.com/gear-tech/gear.git" }
 anyhow = "1.0"
 pwasm-utils = { git = "http://github.com/nikvolf/wasm-utils", features = ["sign_ext"] }
 wasm-test-extractor = { path = "../extractor" }
+
+[dev-dependencies]
+wabt = "0.10"
+tempfile = "3"
