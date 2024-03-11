@@ -27,3 +27,7 @@ fn some_test() {
 }
 
 ```
+
+#### Examples
+
+See `./examplle` in this repository or standalone minimal example at https://github.com/NikVolf/gtest-min.
