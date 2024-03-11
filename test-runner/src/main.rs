@@ -127,7 +127,7 @@ fn main() -> anyhow::Result<()> {
         let clone_line = line.clone();
         let paths = clone_line.split("|").collect::<Vec<_>>();
         if paths.len() != 2 {
-            anyhow::bail!("Got this from artifacts dump: '{}'. This is invalid, should be '<wasm_path>/<wasm_test_path>'", line);
+            anyhow::bail!("Got this from artifacts dump: '{}'. This is invalid, should be '<wasm_path>|<wasm_test_path>'", line);
         }
 
         run_tests(paths[0], paths[1])?;
