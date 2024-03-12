@@ -13,7 +13,7 @@ cargo install --git https://github.com/NikVolf/onchain-tests
 
 This will add cargo extension as a drop-in replacement for `cargo test`:
 ```
-cargo test
+cargo gtest
 ```
 
 (it accepts any parameters as regular `cargo test` does)
