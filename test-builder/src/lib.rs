@@ -149,7 +149,6 @@ mod tests {
         let pre_processor = TestBinaryPreProcessor;
         assert_eq!(pre_processor.name(), "test");
 
-        // Create a WAT module with the necessary exports
         let wat = r#"
             (module
                 (func (export "test_func1") (param i32 i32) (result i32)
@@ -173,19 +172,14 @@ mod tests {
             )
         "#;
 
-        // Convert the WAT module to Wasm
         let wasm = Wat2Wasm::new().convert(wat).unwrap();
 
-        // Create a temporary file
         let mut temp_file = NamedTempFile::new().unwrap();
 
-        // Write the Wasm bytes to the temporary file
         temp_file.write_all(wasm.as_ref()).unwrap();
 
-        // Get the path of the temporary file
         let path = temp_file.path().to_path_buf();
 
-        // Test the pre_process method
         let result = pre_processor.pre_process(path.clone());
         assert!(
             result.is_ok(),
@@ -193,8 +187,5 @@ mod tests {
             result.err()
         );
 
-        // If you know what the output should be, you can also assert that the result is correct
-        // For example:
-        // assert_eq!(result.unwrap(), expected_output);
     }
 }
