@@ -1,6 +1,6 @@
-# Gear off-chain & on-chain tests tools
+# Cargo gtest tool
 
-Various tools and libraries to facilitate stability of your Gear programs and any Gear network as a whole. We plan to use this to test for regressions and backward compatibility.
+Along with various tools and libraries to facilitate stability of your Gear programs and any Gear network as a whole. We plan to use this to test for regressions and backward compatibility.
 
 ## How to use
 
