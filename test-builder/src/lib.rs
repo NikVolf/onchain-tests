@@ -120,7 +120,7 @@ impl gear_wasm_builder::PreProcessor for TestBinaryPreProcessor {
             println!("artifacts are dumped at {}:", value);
             println!("{record}");
         } else {
-            println!("GEAR_TEST_BUILDER_ARTIFACTS is not set... Probably custom build!");
+            println!("GEAR_BUILDER_ARTIFACTS is not set... Probably custom build!");
         }
 
         Ok(vec![
