@@ -133,6 +133,8 @@ pub fn run_tests(ptr: *const u8) {
                 }
 
                 sessions::drop_session(&session_id).await;
+
+                msg::reply((), 0).expect("Failed to reply");
             }
             ControlSignal::WrapExecute(session_id, test_index) => {
                 sessions::set_active_session(&session_id).await;
