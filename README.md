@@ -8,7 +8,7 @@ Along with various tools and libraries to facilitate stability of your Gear prog
 
 For contracts development (Gear programs) to run on Vara or different Gear protocol powered network, install `cargo-gtest`:
 ```
-cargo install --git https://github.com/NikVolf/onchain-tests
+cargo install --git https://github.com/NikVolf/cargo-gtest
 ```
 
 This will add cargo extension as a drop-in replacement for `cargo test`:
